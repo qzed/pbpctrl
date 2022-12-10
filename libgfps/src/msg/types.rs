@@ -124,7 +124,6 @@ pub enum PlatformType {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, IntoPrimitive, FromPrimitive)]
 pub enum SassEventCode {
-    Unspecified = 0x00,
     GetCapabilityOfSass = 0x10,
     NotifyCapabilityOfSass = 0x11,
     SetMultiPointState = 0x12,
