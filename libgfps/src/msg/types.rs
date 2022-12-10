@@ -72,7 +72,7 @@ pub enum DeviceEventCode {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, IntoPrimitive, FromPrimitive)]
 pub enum DeviceActionEventCode {
-    DeviceActionRing = 0x01,
+    Ring = 0x01,
 
     #[num_enum(catch_all)]
     Unknown(u8),
