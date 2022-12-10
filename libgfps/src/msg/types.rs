@@ -57,6 +57,7 @@ pub enum DeviceEventCode {
     ModelId = 0x01,
     BleAddress = 0x02,
     BatteryInfo = 0x03,
+    BatteryTime = 0x04,
     ActiveComponentsRequest = 0x05,
     ActiveComponentsResponse = 0x06,
     Capability = 0x07,
