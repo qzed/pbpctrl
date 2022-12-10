@@ -129,7 +129,7 @@ pub enum SassEventCode {
     SetMultiPointState = 0x12,
     SwitchAudioSourceBetweenConnectedDevices = 0x30,
     SwitchBack = 0x31,
-    NotifyMultipointSwitchEvent = 0x32,
+    NotifyMultiPointSwitchEvent = 0x32,
     GetConnectionStatus = 0x33,
     NotifyConnectionStatus = 0x34,
     SassInitiatedConnection = 0x40,
