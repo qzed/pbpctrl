@@ -106,8 +106,8 @@ mod test {
         let mut codec = Codec::new();
 
         let msg = Message {
-            group: EventGroup::Device as _,
-            code: DeviceEventCode::ModelId as _,
+            group: EventGroup::Device.into(),
+            code: DeviceEventCode::ModelId.into(),
             data: vec![0x00, 0x01, 0x02, 0x04, 0x05].into(),
         };
 
@@ -127,8 +127,8 @@ mod test {
         let mut buf = BytesMut::from(&raw[..]);
 
         let msg = Message {
-            group: EventGroup::Device as _,
-            code: DeviceEventCode::ModelId as _,
+            group: EventGroup::Device.into(),
+            code: DeviceEventCode::ModelId.into(),
             data: vec![0x00, 0x01, 0x02].into(),
         };
 
