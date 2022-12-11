@@ -140,3 +140,34 @@ pub enum PlatformType {
     #[num_enum(catch_all)]
     Unknown(u8),
 }
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BatteryInfo {
+    Unknown,
+    Known {
+        is_charging: bool,
+        percent: u8,
+    },
+}
+
+impl BatteryInfo {
+    pub fn from_byte(value: u8) -> Self {
+        if value & 0x7F == 0x7F {
+            BatteryInfo::Unknown
+        } else {
+            BatteryInfo::Known {
+                is_charging: (value & 0x80) != 0,
+                percent: value & 0x7F,
+            }
+        }
+    }
+
+    pub fn to_byte(&self) -> u8 {
+        match self {
+            BatteryInfo::Unknown => 0xFF,
+            BatteryInfo::Known { is_charging: true, percent } => 0x80 | (0x7F & percent),
+            BatteryInfo::Known { is_charging: false, percent } => 0x7F & percent,
+        }
+    }
+}

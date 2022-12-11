@@ -14,7 +14,7 @@ use futures::StreamExt;
 use gfps::msg::{
     AcknowledgementEventCode, Codec, DeviceActionEventCode, DeviceCapabilitySyncEventCode,
     DeviceConfigurationEventCode, DeviceEventCode, EventGroup, Message, PlatformType,
-    SassEventCode, LoggingEventCode, BluetoothEventCode,
+    SassEventCode, LoggingEventCode, BluetoothEventCode, BatteryInfo,
 };
 
 use num_enum::FromPrimitive;
@@ -197,43 +197,43 @@ fn print_message(msg: &Message) {
                 DeviceEventCode::BatteryInfo => {
                     println!("Battery Info (0x{:02X})", msg.code);
 
-                    let left_level = msg.data[0] & 0x7F;
-                    let left_status = if msg.data[0] & 0x80 != 0 {
-                        "charging"
-                    } else {
-                        "not charging"
-                    };
-
-                    let right_level = msg.data[1] & 0x7F;
-                    let right_status = if msg.data[1] & 0x80 != 0 {
-                        "charging"
-                    } else {
-                        "not charging"
-                    };
-
-                    let case_level = msg.data[2] & 0x7F;
-                    let case_status = if msg.data[2] & 0x80 != 0 {
-                        "charging"
-                    } else {
-                        "not charging"
-                    };
-
-                    if left_level == 0x7F {
-                        println!("  left bud:  unknown");
-                    } else {
-                        println!("  left bud:  {}% ({})", left_level, left_status);
+                    let left = BatteryInfo::from_byte(msg.data[0]);
+                    match left {
+                        BatteryInfo::Unknown => {
+                            println!("  left bud:  unknown");
+                        }
+                        BatteryInfo::Known { is_charging: true, percent } => {
+                            println!("  left bud:  {}% (charging)", percent);
+                        }
+                        BatteryInfo::Known { is_charging: false, percent } => {
+                            println!("  left bud:  {}% (not charging)", percent);
+                        }
                     }
 
-                    if right_level == 0x7F {
-                        println!("  right bud: unknown");
-                    } else {
-                        println!("  right bud: {}% ({})", right_level, right_status);
+                    let right = BatteryInfo::from_byte(msg.data[1]);
+                    match right {
+                        BatteryInfo::Unknown => {
+                            println!("  right bud: unknown");
+                        }
+                        BatteryInfo::Known { is_charging: true, percent } => {
+                            println!("  right bud: {}% (charging)", percent);
+                        }
+                        BatteryInfo::Known { is_charging: false, percent } => {
+                            println!("  right bud: {}% (not charging)", percent);
+                        }
                     }
 
-                    if case_level == 0x7F {
-                        println!("  case:      unknown");
-                    } else {
-                        println!("  case:      {}% ({})", case_level, case_status);
+                    let case = BatteryInfo::from_byte(msg.data[2]);
+                    match case {
+                        BatteryInfo::Unknown => {
+                            println!("  case:      unknown");
+                        }
+                        BatteryInfo::Known { is_charging: true, percent } => {
+                            println!("  case:      {}% (charging)", percent);
+                        }
+                        BatteryInfo::Known { is_charging: false, percent } => {
+                            println!("  case:      {}% (not charging)", percent);
+                        }
                     }
                 }
                 DeviceEventCode::BatteryTime => {
