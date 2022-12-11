@@ -6,8 +6,8 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 
-use bluer::{Address, Session};
-use bluer::rfcomm::{Profile, ReqError, Role};
+use bluer::{Address, Session, Device};
+use bluer::rfcomm::{Profile, ReqError, Role, ProfileHandle};
 
 use futures::StreamExt;
 
@@ -73,31 +73,7 @@ async fn main() -> bluer::Result<()> {
 
             // connect profile
             println!("Connecting GFPS profile...");
-
-            loop {
-                tokio::select! {
-                    res = async {
-                        let _ = dev.connect().await;
-                        dev.connect_profile(&gfps::msg::UUID).await
-                    } => {
-                        if let Err(err) = res {
-                            println!("Connecting GFPS profile failed: {:?}", err);
-                        }
-                        tokio::time::sleep(std::time::Duration::from_millis(3000)).await;
-                    },
-                    req = profile_handle.next() => {
-                        let req = req.expect("no connection request received");
-
-                        if req.device() == addr {
-                            println!("Accepting request...");
-                            break req.accept()?;
-                        } else {
-                            println!("Rejecting unknown device {}", req.device());
-                            req.reject(ReqError::Rejected);
-                        }
-                    },
-                }
-            }
+            connect_device_to_profile(&mut profile_handle, &dev).await?
         };
 
         println!("Profile connected");
@@ -127,6 +103,35 @@ async fn main() -> bluer::Result<()> {
                     Err(e)?;
                 }
             }
+        }
+    }
+}
+
+async fn connect_device_to_profile(profile: &mut ProfileHandle, dev: &Device)
+    -> bluer::Result<bluer::rfcomm::Stream>
+{
+    loop {
+        tokio::select! {
+            res = async {
+                let _ = dev.connect().await;
+                dev.connect_profile(&gfps::msg::UUID).await
+            } => {
+                if let Err(err) = res {
+                    println!("Connecting GFPS profile failed: {:?}", err);
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(3000)).await;
+            },
+            req = profile.next() => {
+                let req = req.expect("no connection request received");
+
+                if req.device() == dev.address() {
+                    println!("Accepting request...");
+                    break req.accept();
+                } else {
+                    println!("Rejecting unknown device {}", req.device());
+                    req.reject(ReqError::Rejected);
+                }
+            },
         }
     }
 }
