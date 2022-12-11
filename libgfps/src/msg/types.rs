@@ -103,6 +103,26 @@ pub enum DeviceCapabilitySyncEventCode {
 #[non_exhaustive]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, IntoPrimitive, FromPrimitive)]
+pub enum SassEventCode {
+    GetCapabilityOfSass = 0x10,
+    NotifyCapabilityOfSass = 0x11,
+    SetMultiPointState = 0x12,
+    SwitchAudioSourceBetweenConnectedDevices = 0x30,
+    SwitchBack = 0x31,
+    NotifyMultiPointSwitchEvent = 0x32,
+    GetConnectionStatus = 0x33,
+    NotifyConnectionStatus = 0x34,
+    SassInitiatedConnection = 0x40,
+    IndicateInUseAccountKey = 0x41,
+    SetCustomData = 0x42,
+
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+#[non_exhaustive]
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, IntoPrimitive, FromPrimitive)]
 pub enum AcknowledgementEventCode {
     Ack = 0x01,
     Nak = 0x02,
@@ -116,26 +136,6 @@ pub enum AcknowledgementEventCode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, IntoPrimitive, FromPrimitive)]
 pub enum PlatformType {
     Android = 0x01,
-
-    #[num_enum(catch_all)]
-    Unknown(u8),
-}
-
-#[non_exhaustive]
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, IntoPrimitive, FromPrimitive)]
-pub enum SassEventCode {
-    GetCapabilityOfSass = 0x10,
-    NotifyCapabilityOfSass = 0x11,
-    SetMultiPointState = 0x12,
-    SwitchAudioSourceBetweenConnectedDevices = 0x30,
-    SwitchBack = 0x31,
-    NotifyMultiPointSwitchEvent = 0x32,
-    GetConnectionStatus = 0x33,
-    NotifyConnectionStatus = 0x34,
-    SassInitiatedConnection = 0x40,
-    IndicateInUseAccountKey = 0x41,
-    SetCustomData = 0x42,
 
     #[num_enum(catch_all)]
     Unknown(u8),
