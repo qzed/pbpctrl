@@ -358,10 +358,7 @@ fn print_message(msg: &Message) {
                     println!("Set Multi-Point State (0x{:02X})", msg.code);
                 }
                 SassEventCode::SwitchAudioSourceBetweenConnectedDevices => {
-                    println!(
-                        "Switch Audio Source Between Connected Devices (0x{:02X})",
-                        msg.code
-                    );
+                    println!("Switch Audio Source Between Connected Devices (0x{:02X})", msg.code);
                 }
                 SassEventCode::SwitchBack => {
                     println!("Switch Back (0x{:02X})", msg.code);
