@@ -231,9 +231,9 @@ fn print_message(msg: &Message) {
                     }
 
                     if case_level == 0x7F {
-                        println!("  case bud:  unknown");
+                        println!("  case:      unknown");
                     } else {
-                        println!("  case bud:  {}% ({})", case_level, case_status);
+                        println!("  case:      {}% ({})", case_level, case_status);
                     }
                 }
                 DeviceEventCode::BatteryTime => {
