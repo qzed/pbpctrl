@@ -171,3 +171,9 @@ impl BatteryInfo {
         }
     }
 }
+
+impl Default for BatteryInfo {
+    fn default() -> Self {
+        BatteryInfo::Unknown
+    }
+}
