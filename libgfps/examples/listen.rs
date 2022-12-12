@@ -198,43 +198,12 @@ fn print_message(msg: &Message) {
                     println!("Battery Info (0x{:02X})", msg.code);
 
                     let left = BatteryInfo::from_byte(msg.data[0]);
-                    match left {
-                        BatteryInfo::Unknown => {
-                            println!("  left bud:  unknown");
-                        }
-                        BatteryInfo::Known { is_charging: true, percent } => {
-                            println!("  left bud:  {}% (charging)", percent);
-                        }
-                        BatteryInfo::Known { is_charging: false, percent } => {
-                            println!("  left bud:  {}% (not charging)", percent);
-                        }
-                    }
-
                     let right = BatteryInfo::from_byte(msg.data[1]);
-                    match right {
-                        BatteryInfo::Unknown => {
-                            println!("  right bud: unknown");
-                        }
-                        BatteryInfo::Known { is_charging: true, percent } => {
-                            println!("  right bud: {}% (charging)", percent);
-                        }
-                        BatteryInfo::Known { is_charging: false, percent } => {
-                            println!("  right bud: {}% (not charging)", percent);
-                        }
-                    }
-
                     let case = BatteryInfo::from_byte(msg.data[2]);
-                    match case {
-                        BatteryInfo::Unknown => {
-                            println!("  case:      unknown");
-                        }
-                        BatteryInfo::Known { is_charging: true, percent } => {
-                            println!("  case:      {}% (charging)", percent);
-                        }
-                        BatteryInfo::Known { is_charging: false, percent } => {
-                            println!("  case:      {}% (not charging)", percent);
-                        }
-                    }
+
+                    println!("  left bud:  {}", left);
+                    println!("  right bud: {}", right);
+                    println!("  case:      {}", case);
                 }
                 DeviceEventCode::BatteryTime => {
                     println!("Remaining Battery Time (0x{:02X})", msg.code);

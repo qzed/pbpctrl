@@ -1,5 +1,7 @@
 //! RFCOMM events and event-related enums.
 
+use std::fmt::Display;
+
 use num_enum::{IntoPrimitive, FromPrimitive};
 
 
@@ -175,5 +177,21 @@ impl BatteryInfo {
 impl Default for BatteryInfo {
     fn default() -> Self {
         BatteryInfo::Unknown
+    }
+}
+
+impl Display for BatteryInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BatteryInfo::Unknown => {
+                write!(f, "unknown")
+            }
+            BatteryInfo::Known { is_charging: true, percent } => {
+                write!(f, "{}% (charging)", percent)
+            }
+            BatteryInfo::Known { is_charging: false, percent } => {
+                write!(f, "{}% (not charging)", percent)
+            }
+        }
     }
 }
