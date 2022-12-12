@@ -4,12 +4,14 @@ use std::fmt::Display;
 
 use num_enum::{IntoPrimitive, FromPrimitive};
 
+use smallvec::SmallVec;
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Message {
     pub group: u8,
     pub code: u8,
-    pub data: Box<[u8]>,
+    pub data: SmallVec<[u8; 8]>,
 }
 
 

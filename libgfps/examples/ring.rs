@@ -13,7 +13,10 @@ use bluer::rfcomm::{Profile, Role, ProfileHandle, ReqError};
 use futures::{StreamExt, SinkExt};
 
 use gfps::msg::{Codec, Message, EventGroup, DeviceActionEventCode, AcknowledgementEventCode};
+
 use num_enum::FromPrimitive;
+
+use smallvec::smallvec;
 
 
 #[tokio::main(flavor = "current_thread")]
@@ -58,7 +61,7 @@ async fn main() -> bluer::Result<()> {
     let msg = Message {
         group: EventGroup::DeviceAction.into(),
         code: DeviceActionEventCode::Ring.into(),
-        data: vec![0b00000011].into(),      // 0b01: right, 0b10: left, 0b10|0b01 = 0b11: both
+        data: smallvec![0x03],      // 0b01: right, 0b10: left, 0b10|0b01 = 0b11: both
     };
 
     println!("Ringing buds...");
@@ -151,7 +154,7 @@ async fn main() -> bluer::Result<()> {
                         let ack = Message {
                             group: EventGroup::Acknowledgement.into(),
                             code: AcknowledgementEventCode::Ack.into(),
-                            data: vec![msg.group, msg.code].into(),
+                            data: smallvec![msg.group, msg.code],
                         };
 
                         stream.send(&ack).await?;
@@ -197,7 +200,7 @@ async fn main() -> bluer::Result<()> {
                 let msg = Message {
                     group: EventGroup::DeviceAction.into(),
                     code: DeviceActionEventCode::Ring.into(),
-                    data: vec![0].into(),
+                    data: smallvec![0x00],
                 };
 
                 stream.send(&msg).await?;

@@ -99,6 +99,8 @@ mod test {
 
     use bytes::BytesMut;
 
+    use smallvec::smallvec;
+
 
     #[test]
     fn test_encode() {
@@ -108,7 +110,7 @@ mod test {
         let msg = Message {
             group: EventGroup::Device.into(),
             code: DeviceEventCode::ModelId.into(),
-            data: vec![0x00, 0x01, 0x02, 0x04, 0x05].into(),
+            data: smallvec![0x00, 0x01, 0x02, 0x04, 0x05],
         };
 
         // try to encode the message
@@ -129,7 +131,7 @@ mod test {
         let msg = Message {
             group: EventGroup::Device.into(),
             code: DeviceEventCode::ModelId.into(),
-            data: vec![0x00, 0x01, 0x02].into(),
+            data: smallvec![0x00, 0x01, 0x02],
         };
 
         // try to encode the message
@@ -162,7 +164,7 @@ mod test {
         let msg = Message {
             group: 0,
             code: 0,
-            data: vec![0x00, 0x01, 0x02].into(),
+            data: smallvec![0x00, 0x01, 0x02],
         };
 
         // try to encode the message

@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 bytes = "1.3.0"
 num_enum = "0.5.7"
+smallvec = { version = "1.10.0", features = ["union"] }
 tokio = "1.23.0"
 tokio-util = { version = "0.7.4", features = ["codec"] }
 uuid = "1.2.2"
