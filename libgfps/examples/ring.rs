@@ -3,7 +3,7 @@
 //! WARNING: DO NOT RUN THIS EXAMPLE WITH THE BUDS IN YOUR EAR! YOU HAVE BEEN WARNED.
 //!
 //! Usage:
-//!   cargo run --example ring -- <bluetooth-device-address> <left|right|both>
+//!   cargo run --example ring -- <bluetooth-device-address>
 
 use std::str::FromStr;
 
