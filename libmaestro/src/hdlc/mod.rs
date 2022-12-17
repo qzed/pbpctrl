@@ -1,5 +1,7 @@
 //! High-level Data Link Control (HDLC) support library.
 
+pub mod varint;
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Frame {
