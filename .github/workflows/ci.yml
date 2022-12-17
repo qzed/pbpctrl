@@ -1,0 +1,63 @@
+name: Rust
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - feature/ci
+  pull_request:
+    branches:
+      - main
+      - dev
+      - feature/ci
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y install libdbus-1-dev
+
+    - name: Install rust
+      run: |
+        rustup update stable && rustup default stable
+        rustup component add clippy
+
+    - name: Run clippy
+      run: cargo clippy --all --all-features -- -Dwarnings
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        toolchain: [stable, nightly]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y install libdbus-1-dev
+
+    - name: Install rust
+      run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+
+    - name: Build
+      run: cargo build --all
+
+    - name: Test
+      run: cargo test --all
