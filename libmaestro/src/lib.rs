@@ -8,3 +8,5 @@ use uuid::{uuid, Uuid};
 ///
 /// Defined as `25e97ff7-24ce-4c4c-8951-f764a708f7b5`.
 pub const UUID: Uuid = uuid!("25e97ff7-24ce-4c4c-8951-f764a708f7b5");
+
+pub mod hdlc;
