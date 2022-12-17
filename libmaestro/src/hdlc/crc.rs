@@ -17,14 +17,14 @@ impl Crc32 {
         !self.state
     }
 
-    pub fn push_u8(&mut self, byte: u8) -> &mut Self {
+    pub fn put_u8(&mut self, byte: u8) -> &mut Self {
         self.state = tables::CRC32[((self.state as u8) ^ byte) as usize] ^ (self.state >> 8);
         self
     }
 
-    pub fn push_bytes<'a, B: IntoIterator<Item=&'a u8>>(&mut self, bytes: B) -> &mut Self {
+    pub fn put_bytes<'a, B: IntoIterator<Item=&'a u8>>(&mut self, bytes: B) -> &mut Self {
         for b in bytes.into_iter().copied() {
-            self.push_u8(b);
+            self.put_u8(b);
         }
 
         self
@@ -39,7 +39,7 @@ impl Default for Crc32 {
 
 
 pub fn crc32<'a, B: IntoIterator<Item=&'a u8>>(bytes: B) -> u32 {
-    Crc32::new().push_bytes(bytes).value()
+    Crc32::new().put_bytes(bytes).value()
 }
 
 
