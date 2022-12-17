@@ -24,6 +24,12 @@ impl Codec {
     }
 }
 
+impl Default for Codec {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Decoder for Codec {
     type Item = Message;
     type Error = std::io::Error;
