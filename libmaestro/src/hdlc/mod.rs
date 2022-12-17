@@ -1,5 +1,6 @@
 //! High-level Data Link Control (HDLC) support library.
 
+pub mod crc;
 pub mod varint;
 
 
