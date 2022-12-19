@@ -1,7 +1,7 @@
 //! Simple example for listening to GFPS messages sent via the RFCOMM channel.
 //!
 //! Usage:
-//!   cargo run --example listen -- <bluetooth-device-address>
+//!   cargo run --example gfps-listen -- <bluetooth-device-address>
 
 use std::collections::HashSet;
 use std::str::FromStr;
