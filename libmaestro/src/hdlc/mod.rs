@@ -2,6 +2,7 @@
 
 pub mod consts;
 pub mod crc;
+pub mod decoder;
 pub mod encoder;
 pub mod varint;
 
@@ -16,6 +17,10 @@ pub struct Frame {
 }
 
 impl Frame {
+    pub fn decode(buf: &mut BytesMut) -> Result<Option<Self>, decoder::Error> {
+        decoder::Decoder::new().process(buf)
+    }
+
     pub fn encode(&self, buf: &mut BytesMut) {
         encoder::encode(buf, self)
     }
