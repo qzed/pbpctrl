@@ -1,10 +1,13 @@
 //! High-level Data Link Control (HDLC) support library.
 
+pub mod codec;
 pub mod consts;
 pub mod crc;
 pub mod decoder;
 pub mod encoder;
 pub mod varint;
+
+pub use codec::Codec;
 
 use bytes::BytesMut;
 
