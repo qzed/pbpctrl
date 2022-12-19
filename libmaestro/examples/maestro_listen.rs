@@ -3,7 +3,7 @@
 //! Usage:
 //!   cargo run --example maestro_listen -- <bluetooth-device-address>
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::str::FromStr;
 
 use bluer::{Address, Session, Device};
@@ -11,12 +11,19 @@ use bluer::rfcomm::{Profile, ReqError, Role, ProfileHandle};
 
 use futures::StreamExt;
 
-use maestro::pwrpc::codec::Codec;
+use maestro::pwrpc::id::{self, Identifier};
+use maestro::pwrpc::codec::{Codec, Packet};
+use maestro::pwrpc::packet::PacketType;
+use maestro::protocol;
+use prost::Message;
 
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> bluer::Result<()> {
     env_logger::init();
+
+    // packet printer
+    let printer = Printer::create();
 
     // handle command line arguments
     let addr = std::env::args().skip(1).next().expect("need device address as argument");
@@ -84,29 +91,7 @@ async fn main() -> bluer::Result<()> {
         while let Some(packet) = stream.next().await {
             match packet {
                 Ok(packet) => {
-                    println!("Frame:");
-                    println!("  address: 0x{:04x}", packet.address);
-                    println!("  packet:");
-                    println!("    type:    {:?}", packet.rpc.r#type);
-                    println!("    channel: {:?}", packet.rpc.channel_id);
-                    println!("    service: {:08x?}", packet.rpc.service_id);
-                    println!("    method:  {:08x?}", packet.rpc.method_id);
-                    println!("    status:  {:?}", packet.rpc.status);
-                    println!("    call-id: {:?}", packet.rpc.call_id);
-                    println!("    payload:");
-
-                    let data = pretty_hex::config_hex(
-                        &packet.rpc.payload,
-                        pretty_hex::HexConfig {
-                            title: false,
-                            ..Default::default()
-                        },
-                    );
-
-                    for line in data.lines() {
-                        println!("      {}", line);
-                    }
-
+                    printer.handle(&packet);
                     println!()
                 }
                 Err(e) if e.raw_os_error() == Some(104) => {
@@ -152,5 +137,73 @@ async fn connect_device_to_profile(profile: &mut ProfileHandle, dev: &Device)
                 }
             },
         }
+    }
+}
+
+
+struct Printer {
+    map: HashMap<(id::Hash, id::Hash), &'static dyn Fn(&Packet) -> ()>,
+}
+
+impl Printer {
+    fn create() -> Self {
+        let mut map = HashMap::<_, &'static dyn Fn(&Packet) -> ()>::new();
+
+        let id_maestro = Identifier::new("maestro_pw.Maestro");
+        let id_swinfo = Identifier::new("GetSoftwareInfo");
+
+        map.insert((id_maestro.hash(), id_swinfo.hash()), &print_packet_swinfo);
+
+        Self { map }
+    }
+
+    fn handle(&self, packet: &Packet) {
+        match self.map.get(&(packet.rpc.service_id, packet.rpc.method_id)) {
+            Some(handler) => handler(packet),
+            None => print_packet_default(packet)
+        }
+    }
+}
+
+fn print_packet_swinfo(packet: &Packet) {
+    println!("Frame:");
+    println!("  address: 0x{:04x}", packet.address);
+    println!("  packet:");
+    println!("    type:    {:?}", PacketType::from_i32(packet.rpc.r#type).unwrap());
+    println!("    channel: {:?}", packet.rpc.channel_id);
+    println!("    service: maestro_pw.Maestro");
+    println!("    method:  GetSoftwareInfo");
+    println!("    status:  {:?}", packet.rpc.status);
+    println!("    call-id: {:?}", packet.rpc.call_id);
+    println!("    payload:");
+
+    let info = protocol::types::SoftwareInfo::decode(&packet.rpc.payload[..])
+        .expect("failed to decode SoftwareInfo packet");
+
+    println!("{:#02x?}", info);
+}
+
+fn print_packet_default(packet: &Packet) {
+    println!("Frame:");
+    println!("  address: 0x{:04x}", packet.address);
+    println!("  packet:");
+    println!("    type:    {:?}", PacketType::from_i32(packet.rpc.r#type).unwrap());
+    println!("    channel: {:?}", packet.rpc.channel_id);
+    println!("    service: {:08x?}", packet.rpc.service_id);
+    println!("    method:  {:08x?}", packet.rpc.method_id);
+    println!("    status:  {:?}", packet.rpc.status);
+    println!("    call-id: {:?}", packet.rpc.call_id);
+    println!("    payload:");
+
+    let data = pretty_hex::config_hex(
+        &packet.rpc.payload,
+        pretty_hex::HexConfig {
+            title: false,
+            ..Default::default()
+        },
+    );
+
+    for line in data.lines() {
+        println!("      {}", line);
     }
 }
