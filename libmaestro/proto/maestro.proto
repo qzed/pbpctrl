@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package maestro;
+
+
+message SoftwareInfo {
+    int32 unknown2 = 2;
+    FirmwareInfo firmware = 4;
+    fixed64 unknown5 = 5;
+    bool unknown6 = 6;
+}
+
+message FirmwareInfo {
+    FirmwareVersion left = 1;
+    FirmwareVersion right = 2;
+    FirmwareVersion case = 3;
+}
+
+message FirmwareVersion {
+    string unknown = 1;
+    string version_string = 2;
+}
