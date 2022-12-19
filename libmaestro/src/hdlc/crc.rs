@@ -1,5 +1,6 @@
 //! 32-bit CRC implementation.
 
+#[derive(Debug)]
 pub struct Crc32 {
     state: u32,
 }
