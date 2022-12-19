@@ -14,6 +14,10 @@ impl Crc32 {
         Self { state }
     }
 
+    pub fn reset(&mut self) {
+        self.state = 0xFFFFFFFF;
+    }
+
     pub fn value(&self) -> u32 {
         !self.state
     }
