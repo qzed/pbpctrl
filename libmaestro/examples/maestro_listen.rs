@@ -1,7 +1,7 @@
 //! Simple example for listening to Maestro messages sent via the RFCOMM channel.
 //!
 //! Usage:
-//!   cargo run --example maestro-listen -- <bluetooth-device-address>
+//!   cargo run --example maestro_listen -- <bluetooth-device-address>
 
 use std::collections::HashSet;
 use std::str::FromStr;
