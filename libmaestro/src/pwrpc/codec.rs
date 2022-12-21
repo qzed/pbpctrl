@@ -5,7 +5,7 @@ use prost::Message;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::{Decoder, Framed, Encoder};
 
-use super::packet::RpcPacket;
+use super::types::RpcPacket;
 use crate::hdlc;
 
 

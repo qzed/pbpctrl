@@ -25,3 +25,11 @@ pub enum RpcStatus {
     #[num_enum(catch_all)]
     Unsupported(u32),
 }
+
+
+mod generated {
+    include!(concat!(env!("OUT_DIR"), "/pw.rpc.packet.rs"));
+}
+
+pub use generated::PacketType;
+pub use generated::RpcPacket;

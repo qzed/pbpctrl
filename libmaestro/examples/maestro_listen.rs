@@ -13,7 +13,7 @@ use futures::StreamExt;
 
 use maestro::pwrpc::id::{self, Identifier};
 use maestro::pwrpc::codec::{Codec, Packet};
-use maestro::pwrpc::packet::PacketType;
+use maestro::pwrpc::types::PacketType;
 use maestro::protocol;
 use prost::Message;
 
