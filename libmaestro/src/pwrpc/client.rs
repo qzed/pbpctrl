@@ -103,7 +103,8 @@ where
                     packet.rpc.channel_id, packet.rpc.service_id, packet.rpc.method_id, packet.rpc.call_id
                 );
 
-                call.complete(packet.rpc.payload).await;
+                let status = RpcStatus::from_primitive(packet.rpc.status);
+                call.complete(packet.rpc.payload, status).await;
             },
             None => {               // no pending call found, silently drop packet
                 log::warn!(
@@ -301,12 +302,13 @@ impl State {
 enum CallUpdate {
     Complete {
         data: Vec<u8>,
+        status: RpcStatus,
     },
     StreamItem {
         data: Vec<u8>,
     },
     Error {
-        code: RpcStatus,
+        status: RpcStatus,
     }
 }
 
@@ -323,14 +325,14 @@ struct Call {
 }
 
 impl Call {
-    pub async fn complete(&mut self, payload: Vec<u8>) {
-        let update = CallUpdate::Complete { data: payload };
+    pub async fn complete(&mut self, payload: Vec<u8>, status: RpcStatus) {
+        let update = CallUpdate::Complete { data: payload, status };
         self.push_update(update).await;
         self.sender.close_channel();
     }
 
     pub async fn complete_with_error(&mut self, status: RpcStatus) {
-        let update = CallUpdate::Error { code: status };
+        let update = CallUpdate::Error { status };
         self.push_update(update).await;
         self.sender.close_channel();
     }
@@ -357,8 +359,8 @@ impl Call {
                         self.channel_id, self.service_id, self.method_id, self.call_id,
                     )
                 },
-                CallUpdate::Error { code } => {
-                    let code: u32 = code.into();
+                CallUpdate::Error { status } => {
+                    let code: u32 = status.into();
 
                     log::warn!(
                         "cannot send call update, caller is gone: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, update=error, error={}",
@@ -388,8 +390,9 @@ impl CallHandle {
         };
 
         match update {
-            CallUpdate::Complete { data } => Ok(data),
-            CallUpdate::Error { code } => Err(code),
+            CallUpdate::Complete { data, status: RpcStatus::Ok } => Ok(data),
+            CallUpdate::Complete { status, .. } => Err(status),
+            CallUpdate::Error { status } => Err(status),
             CallUpdate::StreamItem { .. } => unreachable!(),
         }
     }
@@ -434,9 +437,9 @@ impl<'a> Stream for ServerStream<'a> {
                 self.call.receiver.close();
                 Poll::Ready(None)
             },
-            CallUpdate::Error { code } => {
+            CallUpdate::Error { status } => {
                 self.call.receiver.close();
-                Poll::Ready(Some(Err(code)))
+                Poll::Ready(Some(Err(status)))
             },
         }
     }
