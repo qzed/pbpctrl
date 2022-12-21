@@ -21,7 +21,9 @@ use prost::Message;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> bluer::Result<()> {
-    env_logger::init();
+    env_logger::init_from_env(
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug")
+    );
 
     // handle command line arguments
     let addr = std::env::args().nth(1).expect("need device address as argument");
