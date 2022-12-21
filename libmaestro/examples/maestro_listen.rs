@@ -94,16 +94,6 @@ async fn main() -> bluer::Result<()> {
             Ok(packet) => {
                 packet_addr = addr::Address::from_value(packet.address).swap();
                 break;
-
-            }
-            Err(e) if e.raw_os_error() == Some(104) => {
-                // The Pixel Buds Pro can hand off processing between each
-                // other. On a switch, the connection is reset. Wait a bit
-                // and then try to reconnect.
-                println!();
-                println!("Connection reset. Attempting to reconnect...");
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                break;
             }
             Err(e) => {
                 Err(e)?
