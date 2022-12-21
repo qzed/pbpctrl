@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package maestro;
+package maestro_pw;
 
 
 message Empty { }
