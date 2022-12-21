@@ -3,7 +3,7 @@
 //! Usage:
 //!   cargo run --example maestro_listen -- <bluetooth-device-address>
 
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 use std::str::FromStr;
 
 use bluer::{Address, Session, Device};
@@ -26,7 +26,7 @@ async fn main() -> bluer::Result<()> {
     let printer = Printer::create();
 
     // handle command line arguments
-    let addr = std::env::args().skip(1).next().expect("need device address as argument");
+    let addr = std::env::args().nth(1).expect("need device address as argument");
     let addr = Address::from_str(&addr)?;
 
     // set up session
@@ -39,7 +39,7 @@ async fn main() -> bluer::Result<()> {
     let dev = adapter.device(addr)?;
     let uuids = {
         let mut uuids = Vec::from_iter(dev.uuids().await?
-            .unwrap_or_else(HashSet::new)
+            .unwrap_or_default()
             .into_iter());
 
         uuids.sort_unstable();
@@ -142,12 +142,12 @@ async fn connect_device_to_profile(profile: &mut ProfileHandle, dev: &Device)
 
 
 struct Printer {
-    map: HashMap<(id::Hash, id::Hash), &'static dyn Fn(&Packet) -> ()>,
+    map: HashMap<(id::Hash, id::Hash), &'static dyn Fn(&Packet)>,
 }
 
 impl Printer {
     fn create() -> Self {
-        let mut map = HashMap::<_, &'static dyn Fn(&Packet) -> ()>::new();
+        let mut map = HashMap::<_, &'static dyn Fn(&Packet)>::new();
 
         let id_maestro = Identifier::new("maestro_pw.Maestro");
         let id_swinfo = Identifier::new("GetSoftwareInfo");
