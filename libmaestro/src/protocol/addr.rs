@@ -97,3 +97,19 @@ pub fn channel_id(local: Peer, remote: Peer) -> Option<u32> {
         (_, _) => None,
     }
 }
+
+pub fn address_for_channel(channel: u32) -> Option<Address> {
+    match channel {
+        18 => Some(Address::from_peers(Peer::MaestroA, Peer::Case)),
+        19 => Some(Address::from_peers(Peer::MaestroA, Peer::LeftBtCore)),
+        20 => Some(Address::from_peers(Peer::MaestroA, Peer::LeftSensorHub)),
+        21 => Some(Address::from_peers(Peer::MaestroA, Peer::RightBtCore)),
+        22 => Some(Address::from_peers(Peer::MaestroA, Peer::RightSensorHub)),
+        23 => Some(Address::from_peers(Peer::MaestroB, Peer::Case)),
+        24 => Some(Address::from_peers(Peer::MaestroB, Peer::LeftBtCore)),
+        25 => Some(Address::from_peers(Peer::MaestroB, Peer::LeftSensorHub)),
+        26 => Some(Address::from_peers(Peer::MaestroB, Peer::RightBtCore)),
+        27 => Some(Address::from_peers(Peer::MaestroB, Peer::RightSensorHub)),
+        _ => None,
+    }
+}

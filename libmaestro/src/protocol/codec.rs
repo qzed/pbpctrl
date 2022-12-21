@@ -5,16 +5,11 @@ use prost::Message;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::codec::{Decoder, Framed, Encoder};
 
-use super::types::RpcPacket;
+use crate::pwrpc::types::RpcPacket;
 use crate::hdlc;
 
+use super::addr;
 
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Packet {
-    pub address: u32,
-    pub rpc: RpcPacket,
-}
 
 pub struct Codec {
     hdlc: hdlc::Codec,
@@ -42,7 +37,7 @@ impl Default for Codec {
 }
 
 impl Decoder for Codec {
-    type Item = Packet;
+    type Item = RpcPacket;
     type Error = std::io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
@@ -53,9 +48,7 @@ impl Decoder for Codec {
                     return Ok(None);
                 }
 
-                let rpc = RpcPacket::decode(&frame.data[..])?;
-                let packet = Packet { address: frame.address, rpc };
-
+                let packet = RpcPacket::decode(&frame.data[..])?;
                 Ok(Some(packet))
             }
             None => Ok(None),
@@ -63,24 +56,26 @@ impl Decoder for Codec {
     }
 }
 
-impl Encoder<&Packet> for Codec {
+impl Encoder<&RpcPacket> for Codec {
     type Error = std::io::Error;
 
-    fn encode(&mut self, packet: &Packet, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, packet: &RpcPacket, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        let address = addr::address_for_channel(packet.channel_id).unwrap();
+
         let frame = hdlc::Frame {
-            address: packet.address,
+            address: address.value(),
             control: 0x03,
-            data: packet.rpc.encode_to_vec().into(),    // TODO: can we avoid these allocations?
+            data: packet.encode_to_vec().into(),    // TODO: can we avoid these allocations?
         };
 
         self.hdlc.encode(&frame, dst)
     }
 }
 
-impl Encoder<Packet> for Codec {
+impl Encoder<RpcPacket> for Codec {
     type Error = std::io::Error;
 
-    fn encode(&mut self, packet: Packet, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, packet: RpcPacket, dst: &mut BytesMut) -> Result<(), Self::Error> {
         self.encode(&packet, dst)
     }
 }

@@ -10,11 +10,11 @@ use bluer::rfcomm::{Profile, ReqError, Role, ProfileHandle};
 
 use futures::{StreamExt, Sink};
 
-use maestro::pwrpc::client::{Client, Request, Streaming};
-use maestro::pwrpc::codec::{Codec, Packet};
-use maestro::pwrpc::id::Identifier;
-use maestro::protocol::addr;
+use maestro::protocol::codec::Codec;
 use maestro::protocol::types::{SoftwareInfo, SettingsRsp};
+use maestro::pwrpc::client::{Client, Request, Streaming};
+use maestro::pwrpc::id::Identifier;
+use maestro::pwrpc::types::RpcPacket;
 
 
 #[tokio::main(flavor = "current_thread")]
@@ -85,12 +85,12 @@ async fn main() -> bluer::Result<()> {
     println!("Listening...");
     println!();
 
-    let mut packet_addr = addr::Address::from_value(0);
+    let mut channel = 0;
 
     while let Some(packet) = stream.next().await {
         match packet {
             Ok(packet) => {
-                packet_addr = addr::Address::from_value(packet.address).swap();
+                channel = packet.channel_id;
                 break;
             }
             Err(e) => {
@@ -105,8 +105,7 @@ async fn main() -> bluer::Result<()> {
     tokio::spawn(run_client(client));
 
     let req = Request {
-        address: packet_addr,
-        channel_id: packet_addr.channel_id().unwrap(),
+        channel_id: channel,
         service_id: Identifier::new("maestro_pw.Maestro").hash(),
         method_id: Identifier::new("GetSoftwareInfo").hash(),
         call_id: 42,
@@ -120,8 +119,7 @@ async fn main() -> bluer::Result<()> {
     println!("{:#?}", info);
 
     let req = Request {
-        address: packet_addr,
-        channel_id: packet_addr.channel_id().unwrap(),
+        channel_id: channel,
         service_id: Identifier::new("maestro_pw.Maestro").hash(),
         method_id: Identifier::new("SubscribeToSettingsChanges").hash(),
         call_id: 42,
@@ -138,8 +136,8 @@ async fn main() -> bluer::Result<()> {
 
 async fn run_client<S, E>(mut client: Client<S>)
 where
-    S: Sink<Packet>,
-    S: futures::Stream<Item = Result<Packet, E>> + Unpin,
+    S: Sink<RpcPacket>,
+    S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
     S::Error: std::fmt::Debug,
     E: std::fmt::Debug,
 {
