@@ -78,12 +78,23 @@ async fn main() -> bluer::Result<()> {
 
     println!("Profile connected");
 
-    // listen to event messages
+    // set up stream for RPC communication
     let codec = Codec::new();
     let mut stream = codec.wrap(stream);
 
-    println!("Listening...");
-    println!();
+    // retreive the channel numer
+    //
+    // Note: this is a bit hacky. The protocol works with different channels,
+    // depending on which bud is active (or case...), and which peer we
+    // represent (Maestro A or B). Only one is responsive and ther doesn't seem
+    // to be a good way to figure out which.
+    //
+    // The app seems to do this by firing off one GetSoftwareInfo request per
+    // potential channel, waiting for responses and choosing the responsive
+    // one. However, the buds also automatically send one GetSoftwareInfo
+    // response on the right channel without a request right after establishing
+    // a connection. So for now we just listen for that first message,
+    // discarding all but the channel id.
 
     let mut channel = 0;
 
@@ -99,10 +110,14 @@ async fn main() -> bluer::Result<()> {
         }
     }
 
+    // set up RPC client
     let client = Client::new(stream);
     let handle = client.handle();
 
     tokio::spawn(run_client(client));
+
+    println!("Sending GetSoftwareInfo request");
+    println!();
 
     let req = Request {
         channel_id: channel,
@@ -117,6 +132,10 @@ async fn main() -> bluer::Result<()> {
         .unwrap();
 
     println!("{:#?}", info);
+
+    println!();
+    println!("Listening to settings changes...");
+    println!();
 
     let req = Request {
         channel_id: channel,
