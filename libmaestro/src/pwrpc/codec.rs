@@ -76,3 +76,11 @@ impl Encoder<&Packet> for Codec {
         self.hdlc.encode(&frame, dst)
     }
 }
+
+impl Encoder<Packet> for Codec {
+    type Error = std::io::Error;
+
+    fn encode(&mut self, packet: Packet, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        self.encode(&packet, dst)
+    }
+}
