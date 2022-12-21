@@ -18,7 +18,7 @@ use num_enum::FromPrimitive;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> bluer::Result<()> {
     // handle command line arguments
-    let addr = std::env::args().skip(1).next().expect("need device address as argument");
+    let addr = std::env::args().nth(1).expect("need device address as argument");
     let addr = Address::from_str(&addr)?;
 
     // set up session
@@ -62,7 +62,7 @@ async fn main() -> bluer::Result<()> {
     //   the stored information once either of the timeouts kicks in.
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
 
-    let mut timestamp = deadline.clone();
+    let mut timestamp = deadline;
     let mut bat_left = BatteryInfo::Unknown;
     let mut bat_right = BatteryInfo::Unknown;
     let mut bat_case = BatteryInfo::Unknown;
@@ -81,15 +81,12 @@ async fn main() -> bluer::Result<()> {
                         }
 
                         let code = DeviceEventCode::from_primitive(msg.code);
-                        match code {
-                            DeviceEventCode::BatteryInfo => {
-                                timestamp = std::time::Instant::now();
+                        if code == DeviceEventCode::BatteryInfo {
+                            timestamp = std::time::Instant::now();
 
-                                bat_left = BatteryInfo::from_byte(msg.data[0]);
-                                bat_right = BatteryInfo::from_byte(msg.data[1]);
-                                bat_case = BatteryInfo::from_byte(msg.data[2]);
-                            }
-                            _ => { /* ignore */ },
+                            bat_left = BatteryInfo::from_byte(msg.data[0]);
+                            bat_right = BatteryInfo::from_byte(msg.data[1]);
+                            bat_case = BatteryInfo::from_byte(msg.data[2]);
                         }
                     },
                     Some(Err(err)) => {

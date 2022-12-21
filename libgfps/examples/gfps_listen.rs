@@ -3,7 +3,6 @@
 //! Usage:
 //!   cargo run --example gfps_listen -- <bluetooth-device-address>
 
-use std::collections::HashSet;
 use std::str::FromStr;
 
 use bluer::{Address, Session, Device};
@@ -23,7 +22,7 @@ use num_enum::FromPrimitive;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> bluer::Result<()> {
     // handle command line arguments
-    let addr = std::env::args().skip(1).next().expect("need device address as argument");
+    let addr = std::env::args().nth(1).expect("need device address as argument");
     let addr = Address::from_str(&addr)?;
 
     // set up session
@@ -36,7 +35,7 @@ async fn main() -> bluer::Result<()> {
     let dev = adapter.device(addr)?;
     let uuids = {
         let mut uuids = Vec::from_iter(dev.uuids().await?
-            .unwrap_or_else(HashSet::new)
+            .unwrap_or_default()
             .into_iter());
 
         uuids.sort_unstable();
@@ -152,9 +151,9 @@ fn print_message(msg: &Message) {
                 BluetoothEventCode::DisableSilenceMode => {
                     println!("Disable Silence Mode (0x{:02X})", msg.code);
                 },
-                BluetoothEventCode::Unknown(_) | _ => {
+                _ => {
                     println!("Unknown (0x{:02X})", msg.code);
-                }
+                },
             }
 
             print_message_body_unknown(msg);
@@ -172,7 +171,7 @@ fn print_message(msg: &Message) {
                 LoggingEventCode::LogSaveToBuffer => {
                     println!("Log Save Buffer (0x{:02X})", msg.code);
                 }
-                LoggingEventCode::Unknown(_) | _ => {
+                _ => {
                     println!("Unknown (0x{:02X})", msg.code);
                 }
             }
@@ -236,7 +235,7 @@ fn print_message(msg: &Message) {
                             println!("  platform: Android (0x{:02X})", msg.data[0]);
                             println!("  SDK version: {:02X?})", msg.data[1]);
                         }
-                        PlatformType::Unknown(_) | _ => {
+                        _ => {
                             println!("  platform: Unknown (0x{:02X})", msg.data[0]);
                             println!("  platform data: 0x{:02X?})", msg.data[1]);
                         }
@@ -254,7 +253,7 @@ fn print_message(msg: &Message) {
                     println!("Session Nonce (0x{:02X})", msg.code);
                     println!("  nonce: {:02X?}", msg.data);
                 }
-                DeviceEventCode::Unknown(_) | _ => {
+                _ => {
                     println!("Unknown (0x{:02X})", msg.code);
                     print_message_body_unknown(msg);
                 }
@@ -271,7 +270,7 @@ fn print_message(msg: &Message) {
                 DeviceActionEventCode::Ring => {
                     println!("Ring (0x{:02X})", msg.code);
                 }
-                DeviceActionEventCode::Unknown(_) | _ => {
+                _ => {
                     println!("Unknown (0x{:02X})", msg.code);
                 }
             }
@@ -288,7 +287,7 @@ fn print_message(msg: &Message) {
                 DeviceConfigurationEventCode::BufferSize => {
                     println!("Buffer Size (0x{:02X})", msg.code);
                 }
-                DeviceConfigurationEventCode::Unknown(_) | _ => {
+                _ => {
                     println!("Unknown (0x{:02X})", msg.code);
                 }
             }
@@ -308,7 +307,7 @@ fn print_message(msg: &Message) {
                 DeviceCapabilitySyncEventCode::ConfigurableBufferSizeRange => {
                     println!("Configurable Buffer Size Range (0x{:02X})", msg.code);
                 }
-                DeviceCapabilitySyncEventCode::Unknown(_) | _ => {
+                _ => {
                     println!("Unknown (0x{:02X})", msg.code);
                 }
             }
@@ -355,7 +354,7 @@ fn print_message(msg: &Message) {
                 SassEventCode::SetCustomData => {
                     println!("Set Custom Data (0x{:02X})", msg.code);
                 }
-                SassEventCode::Unknown(_) | _ => {
+                _ => {
                     println!("Unknown (0x{:02X})", msg.code);
                 }
             }
@@ -387,14 +386,14 @@ fn print_message(msg: &Message) {
                     println!("  code: 0x{:02X}", msg.data[2]);
                     println!();
                 }
-                AcknowledgementEventCode::Unknown(_) | _ => {
+                _ => {
                     println!("Unknown (0x{:02X})", msg.code);
                     print_message_body_unknown(msg);
                     println!();
                 }
             }
         }
-        EventGroup::Unknown(_) | _ => {
+        _ => {
             println!(
                 "Unknown (0x{:02X}) :: Unknown (0x{:02X})",
                 msg.group, msg.code

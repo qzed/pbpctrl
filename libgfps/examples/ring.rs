@@ -22,7 +22,7 @@ use smallvec::smallvec;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> bluer::Result<()> {
     // handle command line arguments
-    let addr = std::env::args().skip(1).next().expect("need device address as argument");
+    let addr = std::env::args().nth(1).expect("need device address as argument");
     let addr = Address::from_str(&addr)?;
 
     // set up session
