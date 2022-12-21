@@ -10,13 +10,11 @@ use bluer::rfcomm::{Profile, ReqError, Role, ProfileHandle};
 
 use futures::{StreamExt, Sink};
 
-use maestro::pwrpc::client::Client;
-use maestro::pwrpc::id::Identifier;
+use maestro::pwrpc::client::{Client, Request, Streaming};
 use maestro::pwrpc::codec::{Codec, Packet};
-use maestro::pwrpc::types::{RpcType, PacketType, RpcPacket};
-use maestro::protocol::{self, addr};
-
-use prost::Message;
+use maestro::pwrpc::id::Identifier;
+use maestro::protocol::addr;
+use maestro::protocol::types::{SoftwareInfo, SettingsRsp};
 
 
 #[tokio::main(flavor = "current_thread")]
@@ -106,48 +104,33 @@ async fn main() -> bluer::Result<()> {
 
     tokio::spawn(run_client(client));
 
-    let mut call = handle.call(RpcType::Unary, Packet {
-        address: packet_addr.value(),
-        rpc: RpcPacket {
-            r#type: PacketType::Request as _,
-            channel_id: packet_addr.channel_id().unwrap(),
-            service_id: Identifier::new("maestro_pw.Maestro").hash(),
-            method_id: Identifier::new("GetSoftwareInfo").hash(),
-            payload: maestro::protocol::types::Empty{}.encode_to_vec(),
-            status: 0,
-            call_id: 42,
-        },
-    }).await?;
+    let req = Request {
+        address: packet_addr,
+        channel_id: packet_addr.channel_id().unwrap(),
+        service_id: Identifier::new("maestro_pw.Maestro").hash(),
+        method_id: Identifier::new("GetSoftwareInfo").hash(),
+        call_id: 42,
+        message: maestro::protocol::types::Empty{},
+    };
 
-    let response = call.result().await.unwrap();
-    {
-        let info = protocol::types::SoftwareInfo::decode(&response[..])
-            .expect("failed to decode SoftwareInfo packet");
+    let info: SoftwareInfo = handle.unary(req).await?
+        .result().await
+        .unwrap();
 
-        println!("{:#?}", info);
-    }
+    println!("{:#?}", info);
 
-    let mut call = handle.call(RpcType::ServerStream, Packet {
-        address: packet_addr.value(),
-        rpc: RpcPacket {
-            r#type: PacketType::Request as _,
-            channel_id: packet_addr.channel_id().unwrap(),
-            service_id: Identifier::new("maestro_pw.Maestro").hash(),
-            method_id: Identifier::new("SubscribeToSettingsChanges").hash(),
-            payload: maestro::protocol::types::Empty{}.encode_to_vec(),
-            status: 0,
-            call_id: 42,
-        },
-    }).await?;
+    let req = Request {
+        address: packet_addr,
+        channel_id: packet_addr.channel_id().unwrap(),
+        service_id: Identifier::new("maestro_pw.Maestro").hash(),
+        method_id: Identifier::new("SubscribeToSettingsChanges").hash(),
+        call_id: 42,
+        message: maestro::protocol::types::Empty{},
+    };
 
-    let mut changes = call.stream();
-    while let Some(data) = changes.next().await {
-        let data = data.unwrap();
-
-        let info = protocol::types::SettingsRsp::decode(&data[..])
-            .expect("failed to decode SettingsRsp packet");
-
-        println!("{:#?}", info);
+    let mut call: Streaming<SettingsRsp> = handle.server_streaming(req).await?;
+    while let Some(msg) = call.stream().next().await {
+        println!("{:#?}", msg);
     }
 
     Ok(())

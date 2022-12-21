@@ -6,10 +6,12 @@ use futures::{Sink, SinkExt, Stream, StreamExt};
 use futures::channel::mpsc;
 use futures::lock::Mutex;
 use futures::stream::{SplitSink, SplitStream, FusedStream};
+
 use num_enum::FromPrimitive;
 
-use crate::protocol::addr::Address;
+use prost::Message;
 
+use crate::protocol::addr::Address;
 use super::codec::Packet;
 use super::types::{RpcStatus, RpcType, RpcPacket, PacketType};
 
@@ -195,6 +197,7 @@ where
             status, packet.rpc.channel_id, packet.rpc.service_id, packet.rpc.method_id, packet.rpc.call_id
         );
 
+        // TODO: this should not be here, separate lower-level protocol from RPC stuff
         let addr = Address::from_value(packet.address).swap();
 
         let error_packet = Packet {
@@ -236,29 +239,79 @@ where
     S: Sink<Packet>,
     S: Stream<Item = Result<Packet, E>> + Unpin,
 {
-    pub async fn call(&self, ty: RpcType, request: Packet) -> Result<CallHandle, S::Error> {
+    pub async fn unary<M1, M2>(&self, request: Request<M1>) -> Result<Response<M2>, S::Error>
+    where
+        M1: Message,
+        M2: Message + Default,
+    {
+        let handle = self.call(RpcType::Unary, request).await?;
+
+        let response = Response {
+            maker: std::marker::PhantomData,
+            handle,
+        };
+
+        Ok(response)
+    }
+
+    pub async fn server_streaming<M1, M2>(&self, request: Request<M1>) -> Result<Streaming<M2>, S::Error>
+    where
+        M1: Message,
+        M2: Message + Default,
+    {
+        let handle = self.call(RpcType::ServerStream, request).await?;
+
+        let stream = Streaming {
+            marker: std::marker::PhantomData,
+            handle,
+        };
+
+        Ok(stream)
+    }
+
+    async fn call<M>(&self, ty: RpcType, request: Request<M>) -> Result<CallHandle, S::Error>
+    where
+        M: Message,
+    {
         let (sender, receiver) = mpsc::unbounded();
 
+        let packet = Packet {
+            address: request.address.value(),
+            rpc: RpcPacket {
+                r#type: PacketType::Request.into(),
+                channel_id: request.channel_id,
+                service_id: request.service_id,
+                method_id: request.method_id,
+                payload: request.message.encode_to_vec(),
+                status: RpcStatus::Ok.into(),
+                call_id: request.call_id,
+            }
+        };
+
         let handle = CallHandle {
-            ty,
             receiver,
         };
 
         let call = Call {
             ty,
-            channel_id: request.rpc.channel_id,
-            service_id: request.rpc.service_id,
-            method_id: request.rpc.method_id,
-            call_id: request.rpc.call_id,
+            channel_id: request.channel_id,
+            service_id: request.service_id,
+            method_id: request.method_id,
+            call_id: request.call_id,
             sender,
         };
+
+        log::debug!(
+            "starting rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
+            packet.rpc.channel_id, packet.rpc.service_id, packet.rpc.method_id, packet.rpc.call_id
+        );
 
         {
             let mut state = self.state.lock().await;
             state.pending.push(call);
         }
 
-        self.send(request).await?;
+        self.send(packet).await?;
         Ok(handle)
     }
 
@@ -373,37 +426,8 @@ impl Call {
 }
 
 
-pub struct CallHandle {
-    ty: RpcType,
+struct CallHandle {
     receiver: mpsc::UnboundedReceiver<CallUpdate>,
-}
-
-impl CallHandle {
-    pub async fn result(&mut self) -> Result<Vec<u8>, Error> {
-        if self.ty != RpcType::Unary {
-            panic!("called result() on stream");
-        }
-
-        let update = match self.receiver.next().await {
-            Some(update) => update,
-            None => return Err(Error::ResourceExhausted),
-        };
-
-        match update {
-            CallUpdate::Complete { data, status: RpcStatus::Ok } => Ok(data),
-            CallUpdate::Complete { status, .. } => Err(status),
-            CallUpdate::Error { status } => Err(status),
-            CallUpdate::StreamItem { .. } => unreachable!(),
-        }
-    }
-
-    pub fn stream(&mut self) -> ServerStream<'_> {
-        if !self.ty.has_server_stream() {
-            panic!("called stream() on non-stream rpc");
-        }
-
-        ServerStream { call: self }
-    }
 }
 
 impl Drop for CallHandle {
@@ -413,45 +437,113 @@ impl Drop for CallHandle {
 }
 
 
-pub struct ServerStream<'a> {
-    call: &'a mut CallHandle,
+pub struct Request<M> {
+    // TODO: this should not be here, separate lower-level protocol from RPC stuff
+    // TODO: hashes should not be public...
+    pub address: Address,
+    pub channel_id: u32,
+    pub service_id: u32,
+    pub method_id: u32,
+    pub call_id: u32,
+    pub message: M,
 }
 
-impl<'a> Stream for ServerStream<'a> {
-    type Item = Result<Vec<u8>, Error>;
+
+pub struct Response<M> {
+    maker: std::marker::PhantomData<M>,
+    handle: CallHandle,
+}
+
+impl<M> Response<M>
+where
+    M: Message + Default,
+{
+    pub async fn result(&mut self) -> Result<M, Error> {
+        let update = match self.handle.receiver.next().await {
+            Some(update) => update,
+            None => return Err(Error::ResourceExhausted),
+        };
+
+        let data = match update {
+            CallUpdate::Complete { data, status: RpcStatus::Ok } => data,
+            CallUpdate::Complete { status, .. } => return Err(status),
+            CallUpdate::Error { status } => return Err(status),
+            CallUpdate::StreamItem { .. } => unreachable!("received stream update on unary rpc"),
+        };
+
+        let message = M::decode(&data[..]).expect("TODO: implement proper error type");
+        Ok(message)
+    }
+}
+
+
+pub struct Streaming<M> {
+    marker: std::marker::PhantomData<M>,
+    handle: CallHandle,
+}
+
+impl<M> Streaming<M>
+where
+    M: Message + Default,
+{
+    pub fn stream(&mut self) -> ServerStream<'_, M> {
+        ServerStream {
+            marker: std::marker::PhantomData,
+            handle: &mut self.handle,
+        }
+    }
+}
+
+
+pub struct ServerStream<'a, M> {
+    marker: std::marker::PhantomData<&'a mut M>,
+    handle: &'a mut CallHandle,
+}
+
+impl<'a, M> Stream for ServerStream<'a, M>
+where
+    M: Message + Default,
+{
+    type Item = Result<M, Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
-        let update = match Pin::new(&mut self.call.receiver).poll_next(cx) {
+        let update = match Pin::new(&mut self.handle.receiver).poll_next(cx) {
             Poll::Ready(Some(update)) => update,
             Poll::Ready(None) => return Poll::Ready(None),
             Poll::Pending => return Poll::Pending,
         };
 
-        match update {
+        let data = match update {
             CallUpdate::StreamItem { data } => {
-                Poll::Ready(Some(Ok(data)))
+                data
             },
             CallUpdate::Complete { .. } => {
                 // This indicates the end of the stream. The payload
                 // should be empty.
-                self.call.receiver.close();
-                Poll::Ready(None)
+                self.handle.receiver.close();
+                return Poll::Ready(None);
             },
             CallUpdate::Error { status } => {
-                self.call.receiver.close();
-                Poll::Ready(Some(Err(status)))
+                self.handle.receiver.close();
+                return Poll::Ready(Some(Err(status)));
             },
-        }
+        };
+
+        let message = M::decode(&data[..]).expect("TODO: implement proper error type");
+        Poll::Ready(Some(Ok(message)))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.call.receiver.size_hint()
+        self.handle.receiver.size_hint()
     }
 }
 
-impl<'a> FusedStream for ServerStream<'a> {
+impl<'a, M> FusedStream for ServerStream<'a, M>
+where
+    M: Message + Default,
+{
     fn is_terminated(&self) -> bool {
-        self.call.receiver.is_terminated()
+        self.handle.receiver.is_terminated()
     }
 }
 
