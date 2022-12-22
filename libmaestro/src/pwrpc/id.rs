@@ -47,11 +47,11 @@ pub struct IdRef<'a> {
 
 impl<'a> IdRef<'a> {
     pub fn new(name: &'a str) -> Self {
-        Self { name: name.as_ref() }
+        Self { name }
     }
 
     pub fn name(&self) -> &'a str {
-        &self.name
+        self.name
     }
 
     pub fn hash(&self) -> Hash {
