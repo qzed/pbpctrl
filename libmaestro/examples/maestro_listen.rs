@@ -12,8 +12,7 @@ use futures::{StreamExt, Sink};
 
 use maestro::protocol::codec::Codec;
 use maestro::protocol::types::{SoftwareInfo, SettingsRsp};
-use maestro::pwrpc::client::{Client, Request, Streaming};
-use maestro::pwrpc::id::PathRef;
+use maestro::pwrpc::client::{Client, UnaryRpc, ServerStreamRpc, StreamResponse};
 use maestro::pwrpc::types::RpcPacket;
 use maestro::pwrpc::Error;
 
@@ -121,18 +120,8 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("Sending GetSoftwareInfo request");
     println!();
 
-    // TODO: add some sort of service/method types?
-    // TODO: add wrapper type for maestro service
-    let req_id = PathRef::new("maestro_pw.Maestro.GetSoftwareInfo");
-    let req = Request {
-        channel_id: channel,
-        service_id: req_id.service().hash(),
-        method_id: req_id.method().hash(),
-        call_id: 42,
-        message: (),
-    };
-
-    let info: SoftwareInfo = handle.unary(req).await?
+    let rpc = UnaryRpc::new("maestro_pw.Maestro.GetSoftwareInfo");
+    let info: SoftwareInfo = rpc.call(&handle, channel, 42, ()).await?
         .result().await?;
 
     println!("{:#?}", info);
@@ -141,16 +130,9 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("Listening to settings changes...");
     println!();
 
-    let req_id = PathRef::new("maestro_pw.Maestro.SubscribeToSettingsChanges");
-    let req = Request {
-        channel_id: channel,
-        service_id: req_id.service().hash(),
-        method_id: req_id.method().hash(),
-        call_id: 42,
-        message: (),
-    };
+    let rpc = ServerStreamRpc::new("maestro_pw.Maestro.SubscribeToSettingsChanges");
+    let mut call: StreamResponse<SettingsRsp> = rpc.call(&handle, channel, 43, ()).await?;
 
-    let mut call: Streaming<SettingsRsp> = handle.server_streaming(req).await?;
     while let Some(msg) = call.stream().next().await {
         println!("{:#?}", msg?);
     }

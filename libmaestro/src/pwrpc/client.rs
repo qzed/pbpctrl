@@ -9,6 +9,7 @@ use futures::stream::{SplitSink, SplitStream, FusedStream};
 
 use prost::Message;
 
+use super::id::Path;
 use super::status::{Status, Error};
 use super::types::{RpcType, RpcPacket, PacketType};
 
@@ -232,14 +233,14 @@ where
     S: Stream<Item = Result<RpcPacket, E>> + Unpin,
     Error: From<S::Error>,
 {
-    pub async fn unary<M1, M2>(&self, request: Request<M1>) -> Result<Response<M2>, Error>
+    pub async fn unary<M1, M2>(&self, request: Request<M1>) -> Result<UnaryResponse<M2>, Error>
     where
         M1: Message,
         M2: Message + Default,
     {
         let handle = self.call(RpcType::Unary, request).await?;
 
-        let response = Response {
+        let response = UnaryResponse {
             maker: std::marker::PhantomData,
             handle,
         };
@@ -247,14 +248,14 @@ where
         Ok(response)
     }
 
-    pub async fn server_streaming<M1, M2>(&self, request: Request<M1>) -> Result<Streaming<M2>, Error>
+    pub async fn server_stream<M1, M2>(&self, request: Request<M1>) -> Result<StreamResponse<M2>, Error>
     where
         M1: Message,
         M2: Message + Default,
     {
         let handle = self.call(RpcType::ServerStream, request).await?;
 
-        let stream = Streaming {
+        let stream = StreamResponse {
             marker: std::marker::PhantomData,
             handle,
         };
@@ -429,7 +430,6 @@ impl Drop for CallHandle {
 
 
 pub struct Request<M> {
-    // TODO: hashes should not be public...
     pub channel_id: u32,
     pub service_id: u32,
     pub method_id: u32,
@@ -438,12 +438,12 @@ pub struct Request<M> {
 }
 
 
-pub struct Response<M> {
+pub struct UnaryResponse<M> {
     maker: std::marker::PhantomData<M>,
     handle: CallHandle,
 }
 
-impl<M> Response<M>
+impl<M> UnaryResponse<M>
 where
     M: Message + Default,
 {
@@ -466,12 +466,12 @@ where
 }
 
 
-pub struct Streaming<M> {
+pub struct StreamResponse<M> {
     marker: std::marker::PhantomData<M>,
     handle: CallHandle,
 }
 
-impl<M> Streaming<M>
+impl<M> StreamResponse<M>
 where
     M: Message + Default,
 {
@@ -533,5 +533,83 @@ where
 {
     fn is_terminated(&self) -> bool {
         self.handle.receiver.is_terminated()
+    }
+}
+
+
+pub struct UnaryRpc<M1, M2> {
+    marker1: std::marker::PhantomData<*const M1>,
+    marker2: std::marker::PhantomData<*const M2>,
+    path: Path,
+}
+
+impl<M1, M2> UnaryRpc<M1, M2>
+where
+    M1: Message,
+    M2: Message + Default,
+{
+    pub fn new(path: impl Into<Path>) -> Self {
+        Self {
+            marker1: std::marker::PhantomData,
+            marker2: std::marker::PhantomData,
+            path: path.into(),
+        }
+    }
+
+    pub async fn call<S, E>(&self, handle: &ClientHandle<S>, channel_id: u32, call_id: u32, message: M1)
+        -> Result<UnaryResponse<M2>, Error>
+    where
+        S: Sink<RpcPacket>,
+        S: Stream<Item = Result<RpcPacket, E>> + Unpin,
+        Error: From<S::Error>,
+    {
+        let req = Request {
+            channel_id,
+            service_id: self.path.service().hash(),
+            method_id: self.path.method().hash(),
+            call_id,
+            message,
+        };
+
+        handle.unary(req).await
+    }
+}
+
+
+pub struct ServerStreamRpc<M1, M2> {
+    marker1: std::marker::PhantomData<*const M1>,
+    marker2: std::marker::PhantomData<*const M2>,
+    path: Path,
+}
+
+impl<M1, M2> ServerStreamRpc<M1, M2>
+where
+    M1: Message,
+    M2: Message + Default,
+{
+    pub fn new(path: impl Into<Path>) -> Self {
+        Self {
+            marker1: std::marker::PhantomData,
+            marker2: std::marker::PhantomData,
+            path: path.into(),
+        }
+    }
+
+    pub async fn call<S, E>(&self, handle: &ClientHandle<S>, channel_id: u32, call_id: u32, message: M1)
+        -> Result<StreamResponse<M2>, Error>
+    where
+        S: Sink<RpcPacket>,
+        S: Stream<Item = Result<RpcPacket, E>> + Unpin,
+        Error: From<S::Error>,
+    {
+        let req = Request {
+            channel_id,
+            service_id: self.path.service().hash(),
+            method_id: self.path.method().hash(),
+            call_id,
+            message,
+        };
+
+        handle.server_stream(req).await
     }
 }
