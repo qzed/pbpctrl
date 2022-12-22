@@ -39,7 +39,26 @@ message SerialNumbers {
 }
 
 message RuntimeInfo {
-    // TODO
+    int64 timestamp_ms = 2;     // maybe unix time in ms (consistent ~60s difference to actual time)
+    int32 unknown3 = 3;
+    BatteryInfo battery_info = 6;
+    PlacementInfo placement = 7;
+}
+
+message BatteryInfo {
+    DeviceBatteryInfo case = 1;
+    DeviceBatteryInfo left = 2;
+    DeviceBatteryInfo right = 3;
+}
+
+message DeviceBatteryInfo {
+    int32 level = 1;            // battery level in percent
+    int32 state = 2;            // not charging: 1, charging: 2
+}
+
+message PlacementInfo {
+    bool right_bud_in_case = 1;
+    bool left_bud_in_case = 2;
 }
 
 message WallClockMsg {
