@@ -125,7 +125,7 @@ async fn main() -> bluer::Result<()> {
         service_id: Identifier::new("maestro_pw.Maestro").hash(),
         method_id: Identifier::new("GetSoftwareInfo").hash(),
         call_id: 42,
-        message: maestro::protocol::types::Empty{},
+        message: (),
     };
 
     let info: SoftwareInfo = handle.unary(req).await.unwrap()
@@ -142,7 +142,7 @@ async fn main() -> bluer::Result<()> {
         service_id: Identifier::new("maestro_pw.Maestro").hash(),
         method_id: Identifier::new("SubscribeToSettingsChanges").hash(),
         call_id: 42,
-        message: maestro::protocol::types::Empty{},
+        message: (),
     };
 
     let mut call: Streaming<SettingsRsp> = handle.server_streaming(req).await.unwrap();

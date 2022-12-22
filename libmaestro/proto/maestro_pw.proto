@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package maestro_pw;
 
+import "google/protobuf/empty.proto";
 
-message Empty { }
 
 message SoftwareInfo {
     int32 unknown2 = 2;
@@ -70,12 +70,12 @@ message OobeActionRsp {
 
 
 service Maestro {
-    rpc GetSoftwareInfo(Empty) returns (SoftwareInfo) {}
-    rpc GetHardwareInfo(Empty) returns (HardwareInfo) {}
-    rpc SubscribeRuntimeInfo(Empty) returns (stream RuntimeInfo) {}
-    rpc SetWallClock(WallClockMsg) returns (Empty) {}
-    rpc WriteSetting(WriteSettingMsg) returns (Empty) {}
+    rpc GetSoftwareInfo(google.protobuf.Empty) returns (SoftwareInfo) {}
+    rpc GetHardwareInfo(google.protobuf.Empty) returns (HardwareInfo) {}
+    rpc SubscribeRuntimeInfo(google.protobuf.Empty) returns (stream RuntimeInfo) {}
+    rpc SetWallClock(WallClockMsg) returns (google.protobuf.Empty) {}
+    rpc WriteSetting(WriteSettingMsg) returns (google.protobuf.Empty) {}
     rpc ReadSetting(ReadSettingMsg) returns (SettingsRsp) {}
-    rpc SubscribeToSettingsChanges(Empty) returns (stream SettingsRsp) {}
-    rpc SubscribeToOobeActions(Empty) returns (stream OobeActionRsp) {}
+    rpc SubscribeToSettingsChanges(google.protobuf.Empty) returns (stream SettingsRsp) {}
+    rpc SubscribeToOobeActions(google.protobuf.Empty) returns (stream OobeActionRsp) {}
 }
