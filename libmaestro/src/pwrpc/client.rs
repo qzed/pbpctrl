@@ -7,11 +7,10 @@ use futures::channel::mpsc;
 use futures::lock::Mutex;
 use futures::stream::{SplitSink, SplitStream, FusedStream};
 
-use num_enum::FromPrimitive;
-
 use prost::Message;
 
-use super::types::{RpcStatus, RpcType, RpcPacket, PacketType};
+use super::status::{Status, Error};
+use super::types::{RpcType, RpcPacket, PacketType};
 
 
 pub struct Client<S> {
@@ -24,8 +23,8 @@ impl<S, E> Client<S>
 where
     S: Sink<RpcPacket>,
     S: Stream<Item = Result<RpcPacket, E>> + Unpin,
-    S::Error: std::fmt::Debug,
-    E: std::fmt::Debug,
+    Error: From<S::Error>,
+    Error: From<E>,
 {
     pub fn new(stream: S) -> Client<S> {
         let (sink, stream) = stream.split();
@@ -48,7 +47,7 @@ where
         }
     }
 
-    pub async fn run(&mut self) -> Result<(), E> {
+    pub async fn run(&mut self) -> Result<(), Error> {
         while let Some(packet) = self.receiver.next().await {
             self.process(packet?).await;
         }
@@ -103,7 +102,7 @@ where
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                 );
 
-                let status = RpcStatus::from_primitive(packet.status);
+                let status = Status::from(packet.status);
                 call.complete(packet.payload, status).await;
             },
             None => {               // no pending call found, silently drop packet
@@ -128,7 +127,7 @@ where
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id, packet.status
                 );
 
-                let status = RpcStatus::from_primitive(packet.status);
+                let status = Status::from(packet.status);
                 call.complete_with_error(status).await;
             },
             None => {               // no pending call found, silently drop packet
@@ -165,8 +164,8 @@ where
                         packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                     );
 
-                    self.try_send_client_error(&packet, RpcStatus::InvalidArgument).await;
-                    call.complete_with_error(RpcStatus::InvalidArgument).await;
+                    self.try_send_client_error(&packet, Status::InvalidArgument).await;
+                    call.complete_with_error(Status::InvalidArgument).await;
                 }
             },
             None => {               // no pending call found, try to notify server
@@ -177,17 +176,18 @@ where
                     packet.service_id, packet.method_id, packet.call_id
                 );
 
-                self.try_send_client_error(&packet, RpcStatus::FailedPrecondition).await;
+                self.try_send_client_error(&packet, Status::FailedPrecondition).await;
             },
         }
     }
 
-    async fn send(&self, packet: RpcPacket) -> Result<(), S::Error> {
+    async fn send(&self, packet: RpcPacket) -> Result<(), Error> {
         let mut sink = self.sender.lock().await;
-        sink.send(packet).await
+        sink.send(packet).await?;
+        Ok(())
     }
 
-    async fn try_send_client_error(&self, packet: &RpcPacket, status: RpcStatus) {
+    async fn try_send_client_error(&self, packet: &RpcPacket, status: Status) {
         let status: u32 = status.into();
 
         log::debug!(
@@ -230,8 +230,9 @@ impl<S, E> ClientHandle<S>
 where
     S: Sink<RpcPacket>,
     S: Stream<Item = Result<RpcPacket, E>> + Unpin,
+    Error: From<S::Error>,
 {
-    pub async fn unary<M1, M2>(&self, request: Request<M1>) -> Result<Response<M2>, S::Error>
+    pub async fn unary<M1, M2>(&self, request: Request<M1>) -> Result<Response<M2>, Error>
     where
         M1: Message,
         M2: Message + Default,
@@ -246,7 +247,7 @@ where
         Ok(response)
     }
 
-    pub async fn server_streaming<M1, M2>(&self, request: Request<M1>) -> Result<Streaming<M2>, S::Error>
+    pub async fn server_streaming<M1, M2>(&self, request: Request<M1>) -> Result<Streaming<M2>, Error>
     where
         M1: Message,
         M2: Message + Default,
@@ -261,7 +262,7 @@ where
         Ok(stream)
     }
 
-    async fn call<M>(&self, ty: RpcType, request: Request<M>) -> Result<CallHandle, S::Error>
+    async fn call<M>(&self, ty: RpcType, request: Request<M>) -> Result<CallHandle, Error>
     where
         M: Message,
     {
@@ -273,7 +274,7 @@ where
             service_id: request.service_id,
             method_id: request.method_id,
             payload: request.message.encode_to_vec(),
-            status: RpcStatus::Ok.into(),
+            status: Status::Ok as _,
             call_id: request.call_id,
         };
 
@@ -304,9 +305,10 @@ where
         Ok(handle)
     }
 
-    async fn send(&self, packet: RpcPacket) -> Result<(), S::Error> {
+    async fn send(&self, packet: RpcPacket) -> Result<(), Error> {
         let mut sink = self.sender.lock().await;
-        sink.send(packet).await
+        sink.send(packet).await?;
+        Ok(())
     }
 }
 
@@ -344,13 +346,13 @@ impl State {
 enum CallUpdate {
     Complete {
         data: Vec<u8>,
-        status: RpcStatus,
+        status: Status,
     },
     StreamItem {
         data: Vec<u8>,
     },
     Error {
-        status: RpcStatus,
+        status: Status,
     }
 }
 
@@ -367,13 +369,13 @@ struct Call {
 }
 
 impl Call {
-    pub async fn complete(&mut self, payload: Vec<u8>, status: RpcStatus) {
+    pub async fn complete(&mut self, payload: Vec<u8>, status: Status) {
         let update = CallUpdate::Complete { data: payload, status };
         self.push_update(update).await;
         self.sender.close_channel();
     }
 
-    pub async fn complete_with_error(&mut self, status: RpcStatus) {
+    pub async fn complete_with_error(&mut self, status: Status) {
         let update = CallUpdate::Error { status };
         self.push_update(update).await;
         self.sender.close_channel();
@@ -448,17 +450,17 @@ where
     pub async fn result(&mut self) -> Result<M, Error> {
         let update = match self.handle.receiver.next().await {
             Some(update) => update,
-            None => return Err(Error::ResourceExhausted),
+            None => return Err(Error::resource_exhausted("cannot fetch result() multiple times")),
         };
 
         let data = match update {
-            CallUpdate::Complete { data, status: RpcStatus::Ok } => data,
-            CallUpdate::Complete { status, .. } => return Err(status),
-            CallUpdate::Error { status } => return Err(status),
+            CallUpdate::Complete { data, status: Status::Ok } => data,
+            CallUpdate::Complete { status, .. } => return Err(Error::from(status)),
+            CallUpdate::Error { status } => return Err(Error::from(status)),
             CallUpdate::StreamItem { .. } => unreachable!("received stream update on unary rpc"),
         };
 
-        let message = M::decode(&data[..]).expect("TODO: implement proper error type");
+        let message = M::decode(&data[..])?;
         Ok(message)
     }
 }
@@ -512,11 +514,11 @@ where
             },
             CallUpdate::Error { status } => {
                 self.handle.receiver.close();
-                return Poll::Ready(Some(Err(status)));
+                return Poll::Ready(Some(Err(Error::from(status))));
             },
         };
 
-        let message = M::decode(&data[..]).expect("TODO: implement proper error type");
+        let message = M::decode(&data[..])?;
         Poll::Ready(Some(Ok(message)))
     }
 
@@ -533,6 +535,3 @@ where
         self.handle.receiver.is_terminated()
     }
 }
-
-
-pub type Error = RpcStatus;

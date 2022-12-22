@@ -15,6 +15,7 @@ use maestro::protocol::types::{SoftwareInfo, SettingsRsp};
 use maestro::pwrpc::client::{Client, Request, Streaming};
 use maestro::pwrpc::id::Identifier;
 use maestro::pwrpc::types::RpcPacket;
+use maestro::pwrpc::Error;
 
 
 #[tokio::main(flavor = "current_thread")]
@@ -127,9 +128,8 @@ async fn main() -> bluer::Result<()> {
         message: maestro::protocol::types::Empty{},
     };
 
-    let info: SoftwareInfo = handle.unary(req).await?
-        .result().await
-        .unwrap();
+    let info: SoftwareInfo = handle.unary(req).await.unwrap()
+        .result().await.unwrap();
 
     println!("{:#?}", info);
 
@@ -145,9 +145,9 @@ async fn main() -> bluer::Result<()> {
         message: maestro::protocol::types::Empty{},
     };
 
-    let mut call: Streaming<SettingsRsp> = handle.server_streaming(req).await?;
+    let mut call: Streaming<SettingsRsp> = handle.server_streaming(req).await.unwrap();
     while let Some(msg) = call.stream().next().await {
-        println!("{:#?}", msg);
+        println!("{:#?}", msg.unwrap());
     }
 
     Ok(())
@@ -157,8 +157,8 @@ async fn run_client<S, E>(mut client: Client<S>)
 where
     S: Sink<RpcPacket>,
     S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
-    S::Error: std::fmt::Debug,
-    E: std::fmt::Debug,
+    Error: From<E>,
+    Error: From<S::Error>,
 {
     let result = client.run().await;
 
