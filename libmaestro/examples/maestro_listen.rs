@@ -19,7 +19,7 @@ use maestro::pwrpc::Error;
 
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> bluer::Result<()> {
+async fn main() -> Result<(), anyhow::Error> {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug")
     );
@@ -128,8 +128,8 @@ async fn main() -> bluer::Result<()> {
         message: (),
     };
 
-    let info: SoftwareInfo = handle.unary(req).await.unwrap()
-        .result().await.unwrap();
+    let info: SoftwareInfo = handle.unary(req).await?
+        .result().await?;
 
     println!("{:#?}", info);
 
@@ -145,9 +145,9 @@ async fn main() -> bluer::Result<()> {
         message: (),
     };
 
-    let mut call: Streaming<SettingsRsp> = handle.server_streaming(req).await.unwrap();
+    let mut call: Streaming<SettingsRsp> = handle.server_streaming(req).await?;
     while let Some(msg) = call.stream().next().await {
-        println!("{:#?}", msg.unwrap());
+        println!("{:#?}", msg?);
     }
 
     Ok(())
