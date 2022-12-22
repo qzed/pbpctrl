@@ -13,7 +13,7 @@ use futures::{StreamExt, Sink};
 use maestro::protocol::codec::Codec;
 use maestro::protocol::types::{SoftwareInfo, SettingsRsp};
 use maestro::pwrpc::client::{Client, Request, Streaming};
-use maestro::pwrpc::id::Identifier;
+use maestro::pwrpc::id::PathRef;
 use maestro::pwrpc::types::RpcPacket;
 use maestro::pwrpc::Error;
 
@@ -115,15 +115,19 @@ async fn main() -> Result<(), anyhow::Error> {
     let client = Client::new(stream);
     let handle = client.handle();
 
+    // TODO: fix error handling / add support for reconnecting
     tokio::spawn(run_client(client));
 
     println!("Sending GetSoftwareInfo request");
     println!();
 
+    // TODO: add some sort of service/method types?
+    // TODO: add wrapper type for maestro service
+    let req_id = PathRef::new("maestro_pw.Maestro.GetSoftwareInfo");
     let req = Request {
         channel_id: channel,
-        service_id: Identifier::new("maestro_pw.Maestro").hash(),
-        method_id: Identifier::new("GetSoftwareInfo").hash(),
+        service_id: req_id.service().hash(),
+        method_id: req_id.method().hash(),
         call_id: 42,
         message: (),
     };
@@ -137,10 +141,11 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("Listening to settings changes...");
     println!();
 
+    let req_id = PathRef::new("maestro_pw.Maestro.SubscribeToSettingsChanges");
     let req = Request {
         channel_id: channel,
-        service_id: Identifier::new("maestro_pw.Maestro").hash(),
-        method_id: Identifier::new("SubscribeToSettingsChanges").hash(),
+        service_id: req_id.service().hash(),
+        method_id: req_id.method().hash(),
         call_id: 42,
         message: (),
     };
