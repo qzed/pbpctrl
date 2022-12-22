@@ -313,6 +313,12 @@ where
     }
 }
 
+impl<S> Clone for ClientHandle<S> {
+    fn clone(&self) -> Self {
+        Self { sender: self.sender.clone(), state: self.state.clone() }
+    }
+}
+
 
 struct State {
     pending: Vec<Call>,
