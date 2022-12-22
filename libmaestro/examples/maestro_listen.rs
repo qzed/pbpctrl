@@ -12,7 +12,7 @@ use futures::{StreamExt, Sink};
 
 use maestro::protocol::codec::Codec;
 use maestro::protocol::types::{SoftwareInfo, SettingsRsp};
-use maestro::pwrpc::client::{Client, UnaryRpc, ServerStreamRpc, StreamResponse};
+use maestro::pwrpc::client::{Client, UnaryRpc, ServerStreamRpc, StreamResponse, ClientHandle};
 use maestro::pwrpc::types::RpcPacket;
 use maestro::pwrpc::Error;
 
@@ -114,9 +114,44 @@ async fn main() -> Result<(), anyhow::Error> {
     let client = Client::new(stream);
     let handle = client.handle();
 
-    // TODO: fix error handling / add support for reconnecting
-    tokio::spawn(run_client(client));
+    let exec_task = run_client(client);
+    let listen_task = run_listener(handle, channel);
 
+    tokio::select! {
+        res = exec_task => {
+            match res {
+                Ok(_) => {
+                    log::error!("client terminated unexpectedly without error");
+                    Ok(())
+                },
+                Err(e) => {
+                    log::error!("client task failed");
+                    Err(e)
+                },
+            }
+        },
+        res = listen_task => {
+            match res {
+                Ok(_) => {
+                    log::error!("server terminated stream");
+                    Ok(())
+                }
+                Err(e) => {
+                    log::error!("main task failed");
+                    Err(e)
+                }
+            }
+        },
+    }
+}
+
+async fn run_listener<S, E>(handle: ClientHandle<S>, channel: u32) -> anyhow::Result<()>
+where
+    S: Sink<RpcPacket>,
+    S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
+    Error: From<E>,
+    Error: From<S::Error>,
+{
     println!("Sending GetSoftwareInfo request");
     println!();
 
@@ -140,18 +175,15 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-async fn run_client<S, E>(mut client: Client<S>)
+async fn run_client<S, E>(mut client: Client<S>) -> anyhow::Result<()>
 where
     S: Sink<RpcPacket>,
     S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
     Error: From<E>,
     Error: From<S::Error>,
 {
-    let result = client.run().await;
-
-    if let Err(e) = result {
-        log::error!("client shut down with error: {e:?}")
-    }
+    client.run().await?;
+    Ok(())
 }
 
 async fn connect_device_to_profile(profile: &mut ProfileHandle, dev: &Device)
