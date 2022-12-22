@@ -56,92 +56,108 @@ async fn main() -> Result<(), anyhow::Error> {
     println!();
 
     // try to reconnect if connection is reset
-    let stream = {
-        // register GFPS profile
-        println!("Registering Maestro profile...");
+    loop {
+        let stream = {
+            // register GFPS profile
+            println!("Registering Maestro profile...");
 
-        let profile = Profile {
-            uuid: maestro::UUID,
-            role: Some(Role::Client),
-            require_authentication: Some(false),
-            require_authorization: Some(false),
-            auto_connect: Some(false),
-            ..Default::default()
+            let profile = Profile {
+                uuid: maestro::UUID,
+                role: Some(Role::Client),
+                require_authentication: Some(false),
+                require_authorization: Some(false),
+                auto_connect: Some(false),
+                ..Default::default()
+            };
+
+            let mut profile_handle = session.register_profile(profile).await?;
+
+            // connect profile
+            println!("Connecting GFPS profile...");
+            connect_device_to_profile(&mut profile_handle, &dev).await?
         };
 
-        let mut profile_handle = session.register_profile(profile).await?;
+        println!("Profile connected");
 
-        // connect profile
-        println!("Connecting GFPS profile...");
-        connect_device_to_profile(&mut profile_handle, &dev).await?
-    };
+        // set up stream for RPC communication
+        let codec = Codec::new();
+        let mut stream = codec.wrap(stream);
 
-    println!("Profile connected");
+        // retreive the channel numer
+        //
+        // Note: this is a bit hacky. The protocol works with different channels,
+        // depending on which bud is active (or case...), and which peer we
+        // represent (Maestro A or B). Only one is responsive and ther doesn't seem
+        // to be a good way to figure out which.
+        //
+        // The app seems to do this by firing off one GetSoftwareInfo request per
+        // potential channel, waiting for responses and choosing the responsive
+        // one. However, the buds also automatically send one GetSoftwareInfo
+        // response on the right channel without a request right after establishing
+        // a connection. So for now we just listen for that first message,
+        // discarding all but the channel id.
 
-    // set up stream for RPC communication
-    let codec = Codec::new();
-    let mut stream = codec.wrap(stream);
+        let mut channel = 0;
 
-    // retreive the channel numer
-    //
-    // Note: this is a bit hacky. The protocol works with different channels,
-    // depending on which bud is active (or case...), and which peer we
-    // represent (Maestro A or B). Only one is responsive and ther doesn't seem
-    // to be a good way to figure out which.
-    //
-    // The app seems to do this by firing off one GetSoftwareInfo request per
-    // potential channel, waiting for responses and choosing the responsive
-    // one. However, the buds also automatically send one GetSoftwareInfo
-    // response on the right channel without a request right after establishing
-    // a connection. So for now we just listen for that first message,
-    // discarding all but the channel id.
-
-    let mut channel = 0;
-
-    while let Some(packet) = stream.next().await {
-        match packet {
-            Ok(packet) => {
-                channel = packet.channel_id;
-                break;
-            }
-            Err(e) => {
-                Err(e)?
+        while let Some(packet) = stream.next().await {
+            match packet {
+                Ok(packet) => {
+                    channel = packet.channel_id;
+                    break;
+                }
+                Err(e) => {
+                    Err(e)?
+                }
             }
         }
-    }
 
-    // set up RPC client
-    let client = Client::new(stream);
-    let handle = client.handle();
+        // set up RPC client
+        let client = Client::new(stream);
+        let handle = client.handle();
 
-    let exec_task = run_client(client);
-    let listen_task = run_listener(handle, channel);
+        let exec_task = run_client(client);
+        let listen_task = run_listener(handle, channel);
 
-    tokio::select! {
-        res = exec_task => {
-            match res {
-                Ok(_) => {
-                    log::error!("client terminated unexpectedly without error");
-                    Ok(())
-                },
-                Err(e) => {
-                    log::error!("client task failed");
-                    Err(e)
-                },
-            }
-        },
-        res = listen_task => {
-            match res {
-                Ok(_) => {
-                    log::error!("server terminated stream");
-                    Ok(())
+        tokio::select! {
+            res = exec_task => {
+                match res {
+                    Ok(_) => {
+                        log::error!("client terminated unexpectedly without error");
+                        return Ok(());
+                    },
+                    Err(e) => {
+                        log::error!("client task terminated with error");
+
+                        let cause = e.root_cause();
+                        if let Some(cause) = cause.downcast_ref::<std::io::Error>() {
+                            if cause.raw_os_error() == Some(104) {
+                                // The Pixel Buds Pro can hand off processing between each
+                                // other. On a switch, the connection is reset. Wait a bit
+                                // and then try to reconnect.
+                                println!();
+                                println!("Connection reset. Attempting to reconnect...");
+                                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                                continue;
+                            }
+                        }
+
+                        return Err(e);
+                    },
                 }
-                Err(e) => {
-                    log::error!("main task failed");
-                    Err(e)
+            },
+            res = listen_task => {
+                match res {
+                    Ok(_) => {
+                        log::error!("server terminated stream");
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        log::error!("main task terminated with error");
+                        return Err(e);
+                    }
                 }
-            }
-        },
+            },
+        }
     }
 }
 
