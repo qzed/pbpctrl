@@ -14,9 +14,9 @@ message SoftwareInfo {
 
 message FirmwareInfo {
     // Note: order might not be correct
-    FirmwareVersion left = 1;
+    FirmwareVersion case = 1;
     FirmwareVersion right = 2;
-    FirmwareVersion case = 3;
+    FirmwareVersion left = 3;
 }
 
 message FirmwareVersion {
@@ -25,14 +25,22 @@ message FirmwareVersion {
 }
 
 message HardwareInfo {
-    // TODO
+    int32 unknown1 = 1;
+    int32 unknown2 = 2;
+    int32 unknown5 = 5;
+    int32 unknown6 = 6;
+    SerialNumbers serial_number = 7;
 }
 
+message SerialNumbers {
+    string case = 1;
+    string right = 2;
+    string left = 3;
+}
 
 message RuntimeInfo {
     // TODO
 }
-
 
 message WallClockMsg {
     // TODO
