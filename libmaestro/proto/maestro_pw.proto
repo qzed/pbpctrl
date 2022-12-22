@@ -92,7 +92,7 @@ message SettingValue {
 }
 
 message OobeActionRsp {
-    // TODO
+    int32 unknown1 = 1;         // something realted to in-ear detection sensors
 }
 
 
