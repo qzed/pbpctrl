@@ -1,7 +1,7 @@
 //! Simple example for receiving battery info via the GFPS RFCOMM channel.
 //!
 //! Usage:
-//!   cargo run --example get_battery -- <bluetooth-device-address>
+//!   cargo run --example gfps_get_battery -- <bluetooth-device-address>
 
 use std::str::FromStr;
 
