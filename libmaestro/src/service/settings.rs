@@ -183,6 +183,13 @@ pub struct AncrGestureLoop {
     pub transparency: bool,
 }
 
+impl AncrGestureLoop {
+    pub fn is_valid(&self) -> bool {
+        // at least two need to be set
+        (self.active as u32 + self.off as u32 + self.transparency as u32) >= 2
+    }
+}
+
 impl From<types::AncrGestureLoop> for AncrGestureLoop {
     fn from(other: types::AncrGestureLoop) -> Self {
         AncrGestureLoop { active: other.active, off: other.off, transparency: other.transparency }
