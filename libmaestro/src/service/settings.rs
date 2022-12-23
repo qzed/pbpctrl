@@ -92,6 +92,29 @@ impl From<types::setting_value::ValueOneof> for SettingValue {
     }
 }
 
+impl From<SettingValue> for types::setting_value::ValueOneof {
+    fn from(value: SettingValue) -> Self {
+        use types::setting_value::ValueOneof;
+
+        match value {
+            SettingValue::AutoOtaEnable(x) => ValueOneof::AutoOtaEnable(x),
+            SettingValue::OhdEnable(x) => ValueOneof::OhdEnable(x),
+            SettingValue::OobeIsFinished(x) => ValueOneof::OobeIsFinished(x),
+            SettingValue::GestureEnable(x) => ValueOneof::GestureEnable(x),
+            SettingValue::DiagnosticsEnable(x) => ValueOneof::DiagnosticsEnable(x),
+            SettingValue::OobeMode(x) => ValueOneof::OobeMode(x),
+            SettingValue::GestureControl(x) => ValueOneof::GestureControl(x.into()),
+            SettingValue::MultipointEnable(x) => ValueOneof::MultipointEnable(x),
+            SettingValue::AncrGestureLoop(x) => ValueOneof::AncrGestureLoop(x.into()),
+            SettingValue::CurrentAncrState(x) => ValueOneof::CurrentAncrState(x.into()),
+            SettingValue::OttsMode(x) => ValueOneof::OttsMode(x),
+            SettingValue::VolumeEqEnable(x) => ValueOneof::VolumeEqEnable(x),
+            SettingValue::CurrentUserEq(x) => ValueOneof::CurrentUserEq(x.into()),
+            SettingValue::VolumeAsymmetry(x) => ValueOneof::VolumeAsymmetry(x.raw()),
+        }
+    }
+}
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GestureControl {
@@ -114,6 +137,29 @@ impl From<types::GestureControl> for GestureControl {
             .unwrap_or(RegularActionTarget::Unknown(-1));
 
         GestureControl { left, right }
+    }
+}
+
+impl From<GestureControl> for types::GestureControl {
+    fn from(value: GestureControl) -> Self {
+        use types::device_gesture_control::ValueOneof;
+
+        let left = types::DeviceGestureControl {
+            value_oneof: Some(ValueOneof::Type(types::GestureControlType {
+                value: value.left.into(),
+            })),
+        };
+
+        let right = types::DeviceGestureControl {
+            value_oneof: Some(ValueOneof::Type(types::GestureControlType {
+                value: value.right.into(),
+            })),
+        };
+
+        Self {
+            left: Some(left),
+            right: Some(right),
+        }
     }
 }
 
@@ -193,6 +239,16 @@ impl AncrGestureLoop {
 impl From<types::AncrGestureLoop> for AncrGestureLoop {
     fn from(other: types::AncrGestureLoop) -> Self {
         AncrGestureLoop { active: other.active, off: other.off, transparency: other.transparency }
+    }
+}
+
+impl From<AncrGestureLoop> for types::AncrGestureLoop {
+    fn from(other: AncrGestureLoop) -> Self {
+        Self {
+            active: other.active,
+            off: other.off,
+            transparency: other.transparency,
+        }
     }
 }
 
@@ -353,6 +409,18 @@ impl From<types::EqBands> for EqBands {
             mid: other.mid,
             treble: other.treble,
             upper_treble: other.upper_treble,
+        }
+    }
+}
+
+impl From<EqBands> for types::EqBands {
+    fn from(other: EqBands) -> Self {
+        Self {
+            low_bass: other.low_bass.clamp(EqBands::MIN_VALUE, EqBands::MAX_VALUE),
+            bass: other.bass.clamp(EqBands::MIN_VALUE, EqBands::MAX_VALUE),
+            mid: other.mid.clamp(EqBands::MIN_VALUE, EqBands::MAX_VALUE),
+            treble: other.treble.clamp(EqBands::MIN_VALUE, EqBands::MAX_VALUE),
+            upper_treble: other.upper_treble.clamp(EqBands::MIN_VALUE, EqBands::MAX_VALUE),
         }
     }
 }
