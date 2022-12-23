@@ -5,6 +5,8 @@ package maestro_pw;
 import "google/protobuf/empty.proto";
 
 
+/* -- Maestro Service --------------------------------------------------------------------------- */
+
 message SoftwareInfo {
     int32 unknown2 = 2;
     FirmwareInfo firmware = 4;
@@ -95,7 +97,6 @@ message OobeActionRsp {
     int32 unknown1 = 1;         // something realted to in-ear detection sensors
 }
 
-
 service Maestro {
     rpc GetSoftwareInfo(google.protobuf.Empty) returns (SoftwareInfo) {}
     rpc GetHardwareInfo(google.protobuf.Empty) returns (HardwareInfo) {}
@@ -105,4 +106,45 @@ service Maestro {
     rpc ReadSetting(ReadSettingMsg) returns (SettingsRsp) {}
     rpc SubscribeToSettingsChanges(google.protobuf.Empty) returns (stream SettingsRsp) {}
     rpc SubscribeToOobeActions(google.protobuf.Empty) returns (stream OobeActionRsp) {}
+}
+
+
+/* -- Multipoint Service ------------------------------------------------------------------------ */
+
+message QuietModeStatusEvent {
+    int32 source = 1;
+}
+
+message ForceMultipointSwitchMsg {
+    // TODO
+}
+
+service Multipoint {
+    rpc SubscribeToQuietModeStatus(google.protobuf.Empty) returns (stream QuietModeStatusEvent) {}
+    rpc ForceMultipointSwitch(ForceMultipointSwitchMsg) returns (google.protobuf.Empty) {}
+}
+
+
+/* -- EartipFitTest Service --------------------------------------------------------------------- */
+
+message StartEartipFitTestMsg {
+    // TODO
+}
+
+message EndEartipFitTestMsg {
+    // TODO
+}
+
+message SubscribeToEartipFitTestResultsMsg {
+    // TODO
+}
+
+message EartipFitTestResult {
+    // TODO
+}
+
+service EartipFitTest {
+    rpc StartTest(StartEartipFitTestMsg) returns (google.protobuf.Empty) {}
+    rpc EndTest(StartEartipFitTestMsg) returns (google.protobuf.Empty) {}
+    rpc SubscribeToResults(SubscribeToEartipFitTestResultsMsg) returns (stream EartipFitTestResult) {}
 }
