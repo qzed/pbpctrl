@@ -1,2 +1,2 @@
 mod impls;
-pub use impls::MaestroService;
+pub use impls::{MaestroService, MultipointService};
