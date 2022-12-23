@@ -69,8 +69,30 @@ message WallClockMsg {
 
 message ReadSettingMsg {
     oneof value_oneof {
-        int32 settings_id = 4;
+        AllegroSettingType settings_id = 4;
     }
+}
+
+enum AllegroSettingType {
+    ALLEGRO_SETTING_TYPE_UNKNOWN = 0;
+    ALLEGRO_AUTO_OTA_ENABLE = 1;
+    ALLEGRO_OHD_ENABLE = 2;
+    ALLEGRO_OOBE_IS_FINISHED = 3;
+    ALLEGRO_GESTURE_ENABLE = 4;
+    ALLEGRO_DIAGNOSTICS_ENABLE = 5;
+    ALLEGRO_OOBE_MODE = 6;
+    ALLEGRO_GESTURE_CONTROL = 7;
+    ALLEGRO_ANC_ACCESSIBILITY_MODE = 8;
+    ALLEGRO_ANCR_STATE_ONE_BUD = 9;
+    ALLEGRO_ANCR_STATE_TWO_BUDS = 10;
+    ALLEGRO_MULTIPOINT_ENABLE = 11;
+    ALLEGRO_ANCR_GESTURE_LOOP = 12;
+    ALLEGRO_CURRENT_ANCR_STATE = 13;
+    ALLEGRO_OTTS_MODE = 14;
+    ALLEGRO_VOLUME_EQ_ENABLE = 15;
+    ALLEGRO_CURRENT_USER_EQ = 16;
+    ALLEGRO_VOLUME_ASYMMETRY = 17;
+    ALLEGRO_LAST_SAVED_USER_EQ = 18;
 }
 
 message WriteSettingMsg {
@@ -99,7 +121,7 @@ message SettingValue {
         // reading ancr_state_two_buds returns non-zero status (code: 2)
         bool multipoint_enable = 11;
         AncrGestureLoop ancr_gesture_loop = 12;
-        int32 current_ancr_state = 13;
+        AncState current_ancr_state = 13;
         int32 otts_mode = 14;                   // might be bool
         bool volume_eq_enable = 15;
         EqBands current_user_eq = 16;
@@ -120,13 +142,30 @@ message DeviceGestureControl {
 }
 
 message GestureControlType {
-    int32 value = 1;                        // 5: control ANC, 6: assistant
+    RegularActionTarget value = 1;
+}
+
+enum RegularActionTarget {
+    ACTION_TARGET_UNKNOWN = 0;
+    ACTION_TARGET_CHECK_NOTIFICATIONS = 1;
+    ACTION_TARGET_PREVIOUS_TRACK_REPEAT = 2;
+    ACTION_TARGET_NEXT_TRACK = 3;
+    ACTION_TARGET_PLAY_PAUSE_TRACK = 4;
+    ACTION_TARGET_ANC_CONTROL = 5;
+    ACTION_TARGET_ASSISTANT_QUERY = 6;
 }
 
 message AncrGestureLoop {
     bool active = 1;
     bool off = 2;
     bool transparency = 3;
+}
+
+enum AncState {
+    ANC_STATE_UNKNOWN = 0;
+    ANC_STATE_OFF = 1;
+    ANC_STATE_ACTIVE = 2;
+    ANC_STATE_AWARE = 3;
 }
 
 message EqBands {
