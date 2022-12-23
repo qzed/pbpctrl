@@ -103,6 +103,13 @@ where
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                 );
 
+                if packet.status != 0 {
+                    log::warn!(
+                        "completing rpc with non-zero status: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, status={}",
+                        packet.channel_id, packet.service_id, packet.method_id, packet.call_id, packet.status
+                    );
+                }
+
                 let status = Status::from(packet.status);
                 call.complete(packet.payload, status).await;
             },
