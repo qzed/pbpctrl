@@ -1,11 +1,11 @@
 use crate::protocol::types::{
-    HardwareInfo, OobeActionRsp, ReadSettingMsg, RuntimeInfo, SettingsRsp, SoftwareInfo,
-    WriteSettingMsg, read_setting_msg, settings_rsp,
+    self, read_setting_msg, settings_rsp, write_setting_msg, HardwareInfo, OobeActionRsp,
+    ReadSettingMsg, RuntimeInfo, SettingsRsp, SoftwareInfo, WriteSettingMsg,
 };
 use crate::pwrpc::client::{ClientHandle, ServerStreamRpc, StreamResponse, UnaryRpc};
 use crate::pwrpc::types::RpcPacket;
 use crate::pwrpc::Error;
-use crate::service::settings::{SettingId, SettingValue, Setting};
+use crate::service::settings::{Setting, SettingId, SettingValue};
 
 
 pub struct MaestroService<S> {
@@ -61,10 +61,21 @@ where
         self.rpc_sub_runtime_info.call(&self.client, self.channel_id, 0, ()).await
     }
 
-    // TODO: add a nicer wrapper
-    pub async fn write_setting(&self, setting: WriteSettingMsg) -> Result<(), Error> {
+    pub async fn write_setting_raw(&self, setting: WriteSettingMsg) -> Result<(), Error> {
         self.rpc_write_setting.call(&self.client, self.channel_id, 0, setting).await?
             .result().await
+    }
+
+    pub async fn write_setting(&self, setting: SettingValue) -> Result<(), Error> {
+        let setting = types::SettingValue {
+            value_oneof: Some(setting.into()),
+        };
+
+        let setting = WriteSettingMsg {
+            value_oneof: Some(write_setting_msg::ValueOneof::Setting(setting)),
+        };
+
+        self.write_setting_raw(setting).await
     }
 
     pub async fn read_setting_raw(&self, setting: ReadSettingMsg) -> Result<SettingsRsp, Error> {
