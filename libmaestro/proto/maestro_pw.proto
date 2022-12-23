@@ -87,10 +87,55 @@ message SettingsRsp {
 
 message SettingValue {
     oneof value_oneof {
-        // TODO
+        bool auto_ota_enable = 1;
+        bool ohd_enable = 2;                    // on-head detection
+        bool oobe_is_finished = 3;              // out-of-box experience?
+        bool gesture_enable = 4;
+        bool diagnostics_enable = 5;
+        int32 oobe_mode = 6;                    // might be bool
+        GestureControl gesture_control = 7;
+        // reading anc_accessibility_mode returns non-zero status (code: 2)
+        // reading ancr_state_one_bud returns non-zero status (code: 2)
+        // reading ancr_state_two_buds returns non-zero status (code: 2)
+        bool multipoint_enable = 11;
+        AncrGestureLoop ancr_gesture_loop = 12;
         int32 current_ancr_state = 13;
-        int32 volume_asymmetry = 17;
+        int32 otts_mode = 14;                   // might be bool
+        bool volume_eq_enable = 15;
+        EqBands current_user_eq = 16;
+        int32 volume_asymmetry = 17;            // value goes from 0 t0 200 (incl.), even/odd indicates left/right
+        // reading last_saved_user_eq returns non-zero status (code: 2)
     }
+}
+
+message GestureControl {
+    DeviceGestureControl left = 1;
+    DeviceGestureControl right = 2;
+}
+
+message DeviceGestureControl {
+    oneof value_oneof {
+        GestureControlType type = 4;
+    }
+}
+
+message GestureControlType {
+    int32 value = 1;                        // 5: control ANC, 6: assistant
+}
+
+message AncrGestureLoop {
+    bool active = 1;
+    bool off = 2;
+    bool transparency = 3;
+}
+
+message EqBands {
+    // bands go from -6.0 to 6.0
+    float low_bass = 1;
+    float bass = 2;
+    float mid = 3;
+    float treble = 4;
+    float upper_treble = 5;
 }
 
 message OobeActionRsp {
