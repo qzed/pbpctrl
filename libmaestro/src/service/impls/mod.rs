@@ -1,5 +1,5 @@
 mod maestro;
-pub use maestro::MaestroService;
+pub use self::maestro::MaestroService;
 
 mod multipoint;
-pub use multipoint::MultipointService;
+pub use self::multipoint::MultipointService;
