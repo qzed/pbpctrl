@@ -1,10 +1,11 @@
 use crate::protocol::types::{
     HardwareInfo, OobeActionRsp, ReadSettingMsg, RuntimeInfo, SettingsRsp, SoftwareInfo,
-    WriteSettingMsg,
+    WriteSettingMsg, read_setting_msg, settings_rsp,
 };
 use crate::pwrpc::client::{ClientHandle, ServerStreamRpc, StreamResponse, UnaryRpc};
 use crate::pwrpc::types::RpcPacket;
 use crate::pwrpc::Error;
+use crate::service::settings::{SettingId, SettingValue, Setting};
 
 
 pub struct MaestroService<S> {
@@ -66,10 +67,36 @@ where
             .result().await
     }
 
-    // TODO: add a nicer wrapper
-    pub async fn read_setting(&self, setting: ReadSettingMsg) -> Result<SettingsRsp, Error> {
+    pub async fn read_setting_raw(&self, setting: ReadSettingMsg) -> Result<SettingsRsp, Error> {
         self.rpc_read_setting.call(&self.client, self.channel_id, 0, setting).await?
             .result().await
+    }
+
+    pub async fn read_setting_var(&self, setting: SettingId) -> Result<SettingValue, Error> {
+        let setting = read_setting_msg::ValueOneof::SettingsId(setting.into());
+        let setting = ReadSettingMsg { value_oneof: Some(setting) };
+
+        let value = self.read_setting_raw(setting).await?;
+
+        let value = value.value_oneof
+            .ok_or_else(|| Error::invalid_argument("did not receive any settings value"))?;
+
+        let settings_rsp::ValueOneof::Value(value) = value;
+
+        let value = value.value_oneof
+            .ok_or_else(|| Error::invalid_argument("did not receive any settings value"))?;
+
+        Ok(value.into())
+    }
+
+    pub async fn read_setting<T>(&self, setting: T) -> Result<T::Type, Error>
+    where
+        T: Setting,
+    {
+        let value = self.read_setting_var(setting.id()).await?;
+
+        T::from_var(value)
+            .ok_or_else(|| Error::invalid_argument("failed to decode settings value"))
     }
 
     pub async fn subscribe_to_settings_changes(&self) -> Result<StreamResponse<SettingsRsp>, Error> {
