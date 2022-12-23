@@ -11,10 +11,10 @@ use bluer::rfcomm::{Profile, ReqError, Role, ProfileHandle};
 use futures::{StreamExt, Sink};
 
 use maestro::protocol::codec::Codec;
-use maestro::protocol::types::{SoftwareInfo, SettingsRsp, RuntimeInfo};
-use maestro::pwrpc::client::{Client, UnaryRpc, ServerStreamRpc, StreamResponse, ClientHandle};
+use maestro::pwrpc::client::{Client, ClientHandle};
 use maestro::pwrpc::types::RpcPacket;
 use maestro::pwrpc::Error;
+use maestro::service::MaestroService;
 
 
 #[tokio::main(flavor = "current_thread")]
@@ -171,18 +171,17 @@ where
     println!("Sending GetSoftwareInfo request");
     println!();
 
-    let rpc = UnaryRpc::new("maestro_pw.Maestro.GetSoftwareInfo");
-    let info: SoftwareInfo = rpc.call(&handle, channel, 42, ()).await?
-        .result().await?;
+    let service = MaestroService::new(handle, channel);
 
+    let info = service.get_software_info().await?;
     println!("{:#?}", info);
 
     println!();
     println!("Listening to settings changes...");
     println!();
 
-    let task_rtinfo = run_listener_rtinfo(handle.clone(), channel);
-    let task_settings = run_listener_settings(handle.clone(), channel);
+    let task_rtinfo = run_listener_rtinfo(&service);
+    let task_settings = run_listener_settings(&service);
 
     tokio::select! {
         res = task_rtinfo => res,
@@ -190,16 +189,14 @@ where
     }
 }
 
-async fn run_listener_rtinfo<S, E>(handle: ClientHandle<S>, channel: u32) -> anyhow::Result<()>
+async fn run_listener_rtinfo<S, E>(service: &MaestroService<S>) -> anyhow::Result<()>
 where
     S: Sink<RpcPacket>,
     S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
     Error: From<E>,
     Error: From<S::Error>,
 {
-    let rpc = ServerStreamRpc::new("maestro_pw.Maestro.SubscribeRuntimeInfo");
-    let mut call: StreamResponse<RuntimeInfo> = rpc.call(&handle, channel, 43, ()).await?;
-
+    let mut call = service.subscribe_to_runtime_info().await?;
     while let Some(msg) = call.stream().next().await {
         println!("{:#?}", msg?);
     }
@@ -207,16 +204,14 @@ where
     Ok(())
 }
 
-async fn run_listener_settings<S, E>(handle: ClientHandle<S>, channel: u32) -> anyhow::Result<()>
+async fn run_listener_settings<S, E>(service: &MaestroService<S>) -> anyhow::Result<()>
 where
     S: Sink<RpcPacket>,
     S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
     Error: From<E>,
     Error: From<S::Error>,
 {
-    let rpc = ServerStreamRpc::new("maestro_pw.Maestro.SubscribeToSettingsChanges");
-    let mut call: StreamResponse<SettingsRsp> = rpc.call(&handle, channel, 43, ()).await?;
-
+    let mut call = service.subscribe_to_settings_changes().await?;
     while let Some(msg) = call.stream().next().await {
         println!("{:#?}", msg?);
     }
