@@ -437,6 +437,18 @@ impl Call {
     }
 }
 
+impl Drop for Call {
+    fn drop(&mut self) {
+        // Notify caller that call has been aborted if the call has not been
+        // completed yet. Ignore errors.
+        if !self.sender.is_closed() {
+            let update = CallUpdate::Error { status: Status::Aborted };
+            let _ = self.sender.unbounded_send(update);
+            self.sender.close_channel();
+        }
+    }
+}
+
 
 struct CallHandle {
     receiver: mpsc::UnboundedReceiver<CallUpdate>,
