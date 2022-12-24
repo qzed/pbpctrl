@@ -128,14 +128,8 @@ async fn main() -> Result<(), anyhow::Error> {
     }
 }
 
-async fn read_settings<S, E>(handle: ClientHandle<S>, channel: u32) -> anyhow::Result<()>
-where
-    S: Sink<RpcPacket>,
-    S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
-    Error: From<E>,
-    Error: From<S::Error>,
-{
-    let service = MaestroService::new(handle.clone(), channel);
+async fn read_settings(handle: ClientHandle, channel: u32) -> anyhow::Result<()> {
+    let mut service = MaestroService::new(handle.clone(), channel);
 
     println!();
     println!("Read via types:");

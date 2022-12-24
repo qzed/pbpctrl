@@ -3,13 +3,13 @@ use crate::protocol::types::{
     ReadSettingMsg, RuntimeInfo, SettingsRsp, SoftwareInfo, WriteSettingMsg,
 };
 use crate::pwrpc::client::{ClientHandle, ServerStreamRpc, StreamResponse, UnaryRpc};
-use crate::pwrpc::types::RpcPacket;
 use crate::pwrpc::Error;
 use crate::service::settings::{Setting, SettingId, SettingValue};
 
 
-pub struct MaestroService<S> {
-    client: ClientHandle<S>,
+#[derive(Debug, Clone)]
+pub struct MaestroService {
+    client: ClientHandle,
     channel_id: u32,
 
     rpc_get_software_info: UnaryRpc<(), SoftwareInfo>,
@@ -23,14 +23,8 @@ pub struct MaestroService<S> {
     rpc_sub_oobe_actions: ServerStreamRpc<(), OobeActionRsp>,
 }
 
-impl<S, E> MaestroService<S>
-where
-    S: futures::Sink<RpcPacket>,
-    S: futures::Stream<Item = Result<RpcPacket, E>>,
-    S: Unpin,
-    Error: From<S::Error>,
-{
-    pub fn new(client: ClientHandle<S>, channel_id: u32) -> Self {
+impl MaestroService {
+    pub fn new(client: ClientHandle, channel_id: u32) -> Self {
         Self {
             client,
             channel_id,
@@ -47,26 +41,26 @@ where
         }
     }
 
-    pub async fn get_software_info(&self) -> Result<SoftwareInfo, Error> {
-        self.rpc_get_software_info.call(&self.client, self.channel_id, 0, ()).await?
+    pub async fn get_software_info(&mut self) -> Result<SoftwareInfo, Error> {
+        self.rpc_get_software_info.call(&mut self.client, self.channel_id, 0, ()).await?
             .result().await
     }
 
-    pub async fn get_hardware_info(&self) -> Result<HardwareInfo, Error> {
-        self.rpc_get_hardware_info.call(&self.client, self.channel_id, 0, ()).await?
+    pub async fn get_hardware_info(&mut self) -> Result<HardwareInfo, Error> {
+        self.rpc_get_hardware_info.call(&mut self.client, self.channel_id, 0, ()).await?
             .result().await
     }
 
-    pub async fn subscribe_to_runtime_info(&self) -> Result<StreamResponse<RuntimeInfo>, Error> {
-        self.rpc_sub_runtime_info.call(&self.client, self.channel_id, 0, ()).await
+    pub async fn subscribe_to_runtime_info(&mut self) -> Result<StreamResponse<RuntimeInfo>, Error> {
+        self.rpc_sub_runtime_info.call(&mut self.client, self.channel_id, 0, ()).await
     }
 
-    pub async fn write_setting_raw(&self, setting: WriteSettingMsg) -> Result<(), Error> {
-        self.rpc_write_setting.call(&self.client, self.channel_id, 0, setting).await?
+    pub async fn write_setting_raw(&mut self, setting: WriteSettingMsg) -> Result<(), Error> {
+        self.rpc_write_setting.call(&mut self.client, self.channel_id, 0, setting).await?
             .result().await
     }
 
-    pub async fn write_setting(&self, setting: SettingValue) -> Result<(), Error> {
+    pub async fn write_setting(&mut self, setting: SettingValue) -> Result<(), Error> {
         let setting = types::SettingValue {
             value_oneof: Some(setting.into()),
         };
@@ -78,12 +72,12 @@ where
         self.write_setting_raw(setting).await
     }
 
-    pub async fn read_setting_raw(&self, setting: ReadSettingMsg) -> Result<SettingsRsp, Error> {
-        self.rpc_read_setting.call(&self.client, self.channel_id, 0, setting).await?
+    pub async fn read_setting_raw(&mut self, setting: ReadSettingMsg) -> Result<SettingsRsp, Error> {
+        self.rpc_read_setting.call(&mut self.client, self.channel_id, 0, setting).await?
             .result().await
     }
 
-    pub async fn read_setting_var(&self, setting: SettingId) -> Result<SettingValue, Error> {
+    pub async fn read_setting_var(&mut self, setting: SettingId) -> Result<SettingValue, Error> {
         let setting = read_setting_msg::ValueOneof::SettingsId(setting.into());
         let setting = ReadSettingMsg { value_oneof: Some(setting) };
 
@@ -100,7 +94,7 @@ where
         Ok(value.into())
     }
 
-    pub async fn read_setting<T>(&self, setting: T) -> Result<T::Type, Error>
+    pub async fn read_setting<T>(&mut self, setting: T) -> Result<T::Type, Error>
     where
         T: Setting,
     {
@@ -110,12 +104,12 @@ where
             .ok_or_else(|| Error::invalid_argument("failed to decode settings value"))
     }
 
-    pub async fn subscribe_to_settings_changes(&self) -> Result<StreamResponse<SettingsRsp>, Error> {
-        self.rpc_sub_settings_changes.call(&self.client, self.channel_id, 0, ()).await
+    pub async fn subscribe_to_settings_changes(&mut self) -> Result<StreamResponse<SettingsRsp>, Error> {
+        self.rpc_sub_settings_changes.call(&mut self.client, self.channel_id, 0, ()).await
     }
 
-    pub async fn subscribe_to_oobe_actions(&self) -> Result<StreamResponse<OobeActionRsp>, Error> {
-        self.rpc_sub_oobe_actions.call(&self.client, self.channel_id, 0, ()).await
+    pub async fn subscribe_to_oobe_actions(&mut self) -> Result<StreamResponse<OobeActionRsp>, Error> {
+        self.rpc_sub_oobe_actions.call(&mut self.client, self.channel_id, 0, ()).await
     }
 
     // TODO:

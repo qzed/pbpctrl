@@ -165,17 +165,11 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-async fn get_battery<S, E>(handle: ClientHandle<S>, channel: u32) -> anyhow::Result<RuntimeInfo>
-where
-    S: Sink<RpcPacket>,
-    S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
-    Error: From<E>,
-    Error: From<S::Error>,
-{
+async fn get_battery(handle: ClientHandle, channel: u32) -> anyhow::Result<RuntimeInfo> {
     println!("Reading battery info...");
     println!();
 
-    let service = MaestroService::new(handle, channel);
+    let mut service = MaestroService::new(handle, channel);
 
     let mut call = service.subscribe_to_runtime_info().await?;
     if let Some(msg) = call.stream().next().await {

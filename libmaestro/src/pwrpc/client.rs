@@ -1,10 +1,8 @@
 use std::pin::Pin;
-use std::sync::Arc;
 use std::task::Poll;
 
 use futures::{Sink, SinkExt, Stream, StreamExt};
 use futures::channel::mpsc;
-use futures::lock::Mutex;
 use futures::stream::{SplitSink, SplitStream, FusedStream};
 
 use prost::Message;
@@ -14,10 +12,23 @@ use super::status::{Status, Error};
 use super::types::{RpcType, RpcPacket, PacketType};
 
 
+#[derive(Debug)]
 pub struct Client<S> {
-    receiver: SplitStream<S>,
-    sender: Arc<Mutex<SplitSink<S, RpcPacket>>>,
-    state: Arc<Mutex<State>>,
+    /// Stream for lower-level transport.
+    io_rx: SplitStream<S>,
+
+    /// Sink for lower-level transport.
+    io_tx: SplitSink<S, RpcPacket>,
+
+    /// Queue receiver for requests to be processed and sent by us.
+    queue_rx: mpsc::UnboundedReceiver<CallRequest>,
+
+    /// Queue sender for requests to be processed by us. Counter-part for
+    /// `queue_rx`, used by callers via `ClientHandle` to initiate new calls.
+    queue_tx: mpsc::UnboundedSender<CallRequest>,
+
+    /// Pending RPC calls, waiting for a response.
+    pending: Vec<Call>,
 }
 
 impl<S, E> Client<S>
@@ -28,35 +39,46 @@ where
     Error: From<E>,
 {
     pub fn new(stream: S) -> Client<S> {
-        let (sink, stream) = stream.split();
-
-        let state = State {
-            pending: Vec::new(),
-        };
+        let (io_tx, io_rx) = stream.split();
+        let (queue_tx, queue_rx) = mpsc::unbounded();
 
         Client {
-            receiver: stream,
-            sender: Arc::new(Mutex::new(sink)),
-            state: Arc::new(Mutex::new(state)),
+            io_rx,
+            io_tx,
+            queue_rx,
+            queue_tx,
+            pending: Vec::new(),
         }
     }
 
-    pub fn handle(&self) -> ClientHandle<S> {
+    pub fn handle(&self) -> ClientHandle {
         ClientHandle {
-            sender: self.sender.clone(),
-            state: self.state.clone(),
+            queue_tx: self.queue_tx.clone(),
         }
     }
 
     pub async fn run(&mut self) -> Result<(), Error> {
-        while let Some(packet) = self.receiver.next().await {
-            self.process(packet?).await;
-        }
+        loop {
+            tokio::select! {
+                packet = self.io_rx.next() => {
+                    let packet = packet
+                        .ok_or_else(|| Error::aborted("underlying IO stream closed"))??;
 
-        Ok(())
+                    self.process_packet(packet).await;
+                },
+                request = self.queue_rx.next() => {
+                    // SAFETY: We hold both sender and receiver parts and are
+                    // the only ones allowed to close this queue. Therefore, it
+                    // will always be open here.
+                    let request = request.expect("request queue closed unexpectedly");
+
+                    self.process_request(request).await?;
+                },
+            }
+        }
     }
 
-    async fn process(&self, packet: RpcPacket) {
+    async fn process_packet(&mut self, packet: RpcPacket) {
         log::debug!(
             "received packet: type=0x{:02x}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
             packet.r#type, packet.channel_id, packet.service_id, packet.method_id, packet.call_id
@@ -67,13 +89,13 @@ where
 
         match ty {
             Some(PacketType::Response) => {
-                self.complete(packet).await
+                self.rpc_complete(packet).await
             },
             Some(PacketType::ServerError) => {
-                self.complete_with_error(packet).await
+                self.rpc_complete_with_error(packet).await
             },
             Some(PacketType::ServerStream) => {
-                self.stream_push(packet).await
+                self.rpc_stream_push(packet).await
             },
             Some(_) => {
                 log::error!(
@@ -90,11 +112,8 @@ where
         }
     }
 
-    async fn complete(&self, packet: RpcPacket) {
-        let call = {
-            let mut state = self.state.lock().await;
-            state.find_and_remove_call(&packet)
-        };
+    async fn rpc_complete(&mut self, packet: RpcPacket) {
+        let call = self.find_and_remove_call(&packet);
 
         match call {
             Some(mut call) => {     // pending call found, complete rpc
@@ -122,11 +141,8 @@ where
         }
     }
 
-    async fn complete_with_error(&self, packet: RpcPacket) {
-        let call = {
-            let mut state = self.state.lock().await;
-            state.find_and_remove_call(&packet)
-        };
+    async fn rpc_complete_with_error(&mut self, packet: RpcPacket) {
+        let call = self.find_and_remove_call(&packet);
 
         match call {
             Some(mut call) => {     // pending call found, complete rpc with error
@@ -147,9 +163,8 @@ where
         }
     }
 
-    async fn stream_push(&self, packet: RpcPacket) {
-        let mut state = self.state.lock().await;
-        let call = state.find_call_mut(&packet);
+    async fn rpc_stream_push(&mut self, packet: RpcPacket) {
+        let call = self.find_call_mut(&packet);
 
         match call {
             Some(call) => {         // pending call found, forward packet to caller
@@ -164,8 +179,7 @@ where
                     // SAFETY: We are the only ones that can add, remove, or
                     //         otherwise modify items in-between the above find
                     //         operation and this one as we have the lock.
-                    let mut call = state.find_and_remove_call(&packet).unwrap();
-                    drop(state);
+                    let mut call = self.find_and_remove_call(&packet).unwrap();
 
                     log::warn!(
                         "received stream packet for non-stream rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
@@ -177,8 +191,6 @@ where
                 }
             },
             None => {               // no pending call found, try to notify server
-                drop(state);
-
                 log::warn!(
                     "received stream packet for non-pending rpc: service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.service_id, packet.method_id, packet.call_id
@@ -189,13 +201,51 @@ where
         }
     }
 
-    async fn send(&self, packet: RpcPacket) -> Result<(), Error> {
-        let mut sink = self.sender.lock().await;
-        sink.send(packet).await?;
-        Ok(())
+    async fn process_request(&mut self, request: CallRequest) -> Result<(), Error> {
+        let packet = request.packet;
+
+        let call = Call {
+            ty: request.ty,
+            channel_id: packet.channel_id,
+            service_id: packet.service_id,
+            method_id: packet.method_id,
+            call_id: packet.call_id,
+            sender: request.sender,
+        };
+
+        log::debug!(
+            "starting rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
+            packet.channel_id, packet.service_id, packet.method_id, packet.call_id
+        );
+
+        self.pending.push(call);
+        self.send(packet).await
     }
 
-    async fn try_send_client_error(&self, packet: &RpcPacket, status: Status) {
+    fn find_and_remove_call(&mut self, packet: &RpcPacket) -> Option<Call> {
+        let index = self.pending.iter().position(|call| {
+            call.channel_id == packet.channel_id
+                && call.service_id == packet.service_id
+                && call.method_id == packet.method_id
+                && call.call_id == packet.call_id
+        });
+
+        match index {
+            Some(index) => Some(self.pending.remove(index)),
+            None => None,
+        }
+    }
+
+    fn find_call_mut(&mut self, packet: &RpcPacket) -> Option<&mut Call> {
+        self.pending.iter_mut().find(|call| {
+            call.channel_id == packet.channel_id
+                && call.service_id == packet.service_id
+                && call.method_id == packet.method_id
+                && call.call_id == packet.call_id
+        })
+    }
+
+    async fn try_send_client_error(&mut self, packet: &RpcPacket, status: Status) {
         let status: u32 = status.into();
 
         log::debug!(
@@ -220,27 +270,27 @@ where
             );
         }
     }
+
+    async fn send(&mut self, packet: RpcPacket) -> Result<(), Error> {
+        self.io_tx.send(packet).await?;
+        Ok(())
+    }
 }
 
 impl<S> Drop for Client<S> {
     fn drop(&mut self) {
-        // TODO: cancel all pending calls
+        // TODO: cancel all pending calls and wake callers up
     }
 }
 
 
-pub struct ClientHandle<S> {
-    sender: Arc<Mutex<SplitSink<S, RpcPacket>>>,
-    state: Arc<Mutex<State>>,
+#[derive(Debug, Clone)]
+pub struct ClientHandle {
+    queue_tx: mpsc::UnboundedSender<CallRequest>,
 }
 
-impl<S, E> ClientHandle<S>
-where
-    S: Sink<RpcPacket>,
-    S: Stream<Item = Result<RpcPacket, E>> + Unpin,
-    Error: From<S::Error>,
-{
-    pub async fn unary<M1, M2>(&self, request: Request<M1>) -> Result<UnaryResponse<M2>, Error>
+impl ClientHandle {
+    pub async fn unary<M1, M2>(&mut self, request: Request<M1>) -> Result<UnaryResponse<M2>, Error>
     where
         M1: Message,
         M2: Message + Default,
@@ -255,7 +305,7 @@ where
         Ok(response)
     }
 
-    pub async fn server_stream<M1, M2>(&self, request: Request<M1>) -> Result<StreamResponse<M2>, Error>
+    pub async fn server_stream<M1, M2>(&mut self, request: Request<M1>) -> Result<StreamResponse<M2>, Error>
     where
         M1: Message,
         M2: Message + Default,
@@ -270,7 +320,7 @@ where
         Ok(stream)
     }
 
-    async fn call<M>(&self, ty: RpcType, request: Request<M>) -> Result<CallHandle, Error>
+    async fn call<M>(&mut self, ty: RpcType, request: Request<M>) -> Result<CallHandle, Error>
     where
         M: Message,
     {
@@ -286,77 +336,33 @@ where
             call_id: request.call_id,
         };
 
+        let request = CallRequest {
+            ty,
+            packet,
+            sender,
+        };
+
         let handle = CallHandle {
             receiver,
         };
 
-        let call = Call {
-            ty,
-            channel_id: request.channel_id,
-            service_id: request.service_id,
-            method_id: request.method_id,
-            call_id: request.call_id,
-            sender,
-        };
+        self.queue_tx.send(request).await
+            .map_err(|_| Error::aborted("the channel has been closed, no new calls are allowed"))?;
 
-        log::debug!(
-            "starting rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
-            packet.channel_id, packet.service_id, packet.method_id, packet.call_id
-        );
-
-        {
-            let mut state = self.state.lock().await;
-            state.pending.push(call);
-        }
-
-        self.send(packet).await?;
         Ok(handle)
     }
-
-    async fn send(&self, packet: RpcPacket) -> Result<(), Error> {
-        let mut sink = self.sender.lock().await;
-        sink.send(packet).await?;
-        Ok(())
-    }
-}
-
-impl<S> Clone for ClientHandle<S> {
-    fn clone(&self) -> Self {
-        Self { sender: self.sender.clone(), state: self.state.clone() }
-    }
 }
 
 
-struct State {
-    pending: Vec<Call>,
-}
-
-impl State {
-    fn find_and_remove_call(&mut self, packet: &RpcPacket) -> Option<Call> {
-        let index = self.pending.iter().position(|call| {
-            call.channel_id == packet.channel_id
-                && call.service_id == packet.service_id
-                && call.method_id == packet.method_id
-                && call.call_id == packet.call_id
-        });
-
-        match index {
-            Some(index) => Some(self.pending.remove(index)),
-            None => None,
-        }
-    }
-
-    fn find_call_mut(&mut self, packet: &RpcPacket) -> Option<&mut Call> {
-        self.pending.iter_mut().find(|call| {
-            call.channel_id == packet.channel_id
-                && call.service_id == packet.service_id
-                && call.method_id == packet.method_id
-                && call.call_id == packet.call_id
-        })
-    }
+#[derive(Debug)]
+struct CallRequest {
+    ty: RpcType,
+    packet: RpcPacket,
+    sender: mpsc::UnboundedSender<CallUpdate>,
 }
 
 
+#[derive(Debug)]
 enum CallUpdate {
     Complete {
         data: Vec<u8>,
@@ -371,6 +377,7 @@ enum CallUpdate {
 }
 
 
+#[derive(Debug)]
 struct Call {
     ty: RpcType,
 
@@ -550,6 +557,7 @@ where
 }
 
 
+#[derive(Debug, Clone)]
 pub struct UnaryRpc<M1, M2> {
     marker1: std::marker::PhantomData<*const M1>,
     marker2: std::marker::PhantomData<*const M2>,
@@ -569,12 +577,8 @@ where
         }
     }
 
-    pub async fn call<S, E>(&self, handle: &ClientHandle<S>, channel_id: u32, call_id: u32, message: M1)
+    pub async fn call(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32, message: M1)
         -> Result<UnaryResponse<M2>, Error>
-    where
-        S: Sink<RpcPacket>,
-        S: Stream<Item = Result<RpcPacket, E>> + Unpin,
-        Error: From<S::Error>,
     {
         let req = Request {
             channel_id,
@@ -589,6 +593,7 @@ where
 }
 
 
+#[derive(Debug, Clone)]
 pub struct ServerStreamRpc<M1, M2> {
     marker1: std::marker::PhantomData<*const M1>,
     marker2: std::marker::PhantomData<*const M2>,
@@ -608,12 +613,8 @@ where
         }
     }
 
-    pub async fn call<S, E>(&self, handle: &ClientHandle<S>, channel_id: u32, call_id: u32, message: M1)
+    pub async fn call(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32, message: M1)
         -> Result<StreamResponse<M2>, Error>
-    where
-        S: Sink<RpcPacket>,
-        S: Stream<Item = Result<RpcPacket, E>> + Unpin,
-        Error: From<S::Error>,
     {
         let req = Request {
             channel_id,

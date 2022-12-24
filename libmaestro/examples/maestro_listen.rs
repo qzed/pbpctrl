@@ -161,17 +161,11 @@ async fn main() -> Result<(), anyhow::Error> {
     }
 }
 
-async fn run_listener<S, E>(handle: ClientHandle<S>, channel: u32) -> anyhow::Result<()>
-where
-    S: Sink<RpcPacket>,
-    S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
-    Error: From<E>,
-    Error: From<S::Error>,
-{
+async fn run_listener(handle: ClientHandle, channel: u32) -> anyhow::Result<()> {
     println!("Sending GetSoftwareInfo request");
     println!();
 
-    let service = MaestroService::new(handle, channel);
+    let mut service = MaestroService::new(handle, channel);
 
     let info = service.get_software_info().await?;
     println!("{:#?}", info);
@@ -180,8 +174,8 @@ where
     println!("Listening to settings changes...");
     println!();
 
-    let task_rtinfo = run_listener_rtinfo(&service);
-    let task_settings = run_listener_settings(&service);
+    let task_rtinfo = run_listener_rtinfo(service.clone());
+    let task_settings = run_listener_settings(service.clone());
 
     tokio::select! {
         res = task_rtinfo => res,
@@ -189,13 +183,7 @@ where
     }
 }
 
-async fn run_listener_rtinfo<S, E>(service: &MaestroService<S>) -> anyhow::Result<()>
-where
-    S: Sink<RpcPacket>,
-    S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
-    Error: From<E>,
-    Error: From<S::Error>,
-{
+async fn run_listener_rtinfo(mut service: MaestroService) -> anyhow::Result<()> {
     let mut call = service.subscribe_to_runtime_info().await?;
     while let Some(msg) = call.stream().next().await {
         println!("{:#?}", msg?);
@@ -204,13 +192,7 @@ where
     Ok(())
 }
 
-async fn run_listener_settings<S, E>(service: &MaestroService<S>) -> anyhow::Result<()>
-where
-    S: Sink<RpcPacket>,
-    S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
-    Error: From<E>,
-    Error: From<S::Error>,
-{
+async fn run_listener_settings(mut service: MaestroService) -> anyhow::Result<()> {
     let mut call = service.subscribe_to_settings_changes().await?;
     while let Some(msg) = call.stream().next().await {
         println!("{:#?}", msg?);
