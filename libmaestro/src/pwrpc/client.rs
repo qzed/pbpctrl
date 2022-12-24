@@ -64,7 +64,7 @@ where
                     let packet = packet
                         .ok_or_else(|| Error::aborted("underlying IO stream closed"))??;
 
-                    self.process_packet(packet).await;
+                    self.process_packet(packet).await?;
                 },
                 request = self.queue_rx.next() => {
                     // SAFETY: We hold both sender and receiver parts and are
@@ -78,7 +78,7 @@ where
         }
     }
 
-    async fn process_packet(&mut self, packet: RpcPacket) {
+    async fn process_packet(&mut self, packet: RpcPacket) -> Result<(), Error> {
         log::debug!(
             "received packet: type=0x{:02x}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
             packet.r#type, packet.channel_id, packet.service_id, packet.method_id, packet.call_id
@@ -95,7 +95,7 @@ where
                 self.rpc_complete_with_error(packet).await
             },
             Some(PacketType::ServerStream) => {
-                self.rpc_stream_push(packet).await
+                self.rpc_stream_push(packet).await?
             },
             Some(_) => {
                 log::error!(
@@ -110,6 +110,8 @@ where
                 );
             },
         }
+
+        Ok(())
     }
 
     async fn rpc_complete(&mut self, packet: RpcPacket) {
@@ -163,7 +165,7 @@ where
         }
     }
 
-    async fn rpc_stream_push(&mut self, packet: RpcPacket) {
+    async fn rpc_stream_push(&mut self, packet: RpcPacket) -> Result<(), Error> {
         let call = self.find_call_mut(&packet);
 
         match call {
@@ -186,7 +188,7 @@ where
                         packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                     );
 
-                    self.try_send_client_error(&packet, Status::InvalidArgument).await;
+                    self.send_client_error(&packet, Status::InvalidArgument).await?;
                     call.complete_with_error(Status::InvalidArgument).await;
                 }
             },
@@ -196,9 +198,11 @@ where
                     packet.service_id, packet.method_id, packet.call_id
                 );
 
-                self.try_send_client_error(&packet, Status::FailedPrecondition).await;
+                self.send_client_error(&packet, Status::FailedPrecondition).await?;
             },
         }
+
+        Ok(())
     }
 
     async fn process_request(&mut self, request: CallRequest) -> Result<(), Error> {
@@ -245,7 +249,7 @@ where
         })
     }
 
-    async fn try_send_client_error(&mut self, packet: &RpcPacket, status: Status) {
+    async fn send_client_error(&mut self, packet: &RpcPacket, status: Status) -> Result<(), Error> {
         let status: u32 = status.into();
 
         log::debug!(
@@ -263,12 +267,7 @@ where
             status,
         };
 
-        if let Err(e) = self.send(error_packet).await {
-            log::error!(
-                "error client error packet: status=0x{:02x}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}: {:?}",
-                status, packet.channel_id, packet.service_id, packet.method_id, packet.call_id, e
-            );
-        }
+        self.send(error_packet).await
     }
 
     async fn send(&mut self, packet: RpcPacket) -> Result<(), Error> {
