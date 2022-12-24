@@ -40,7 +40,7 @@ impl<'a> From<IdRef<'a>> for Id {
 }
 
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct IdRef<'a> {
     name: &'a str,
 }
@@ -72,6 +72,7 @@ impl<'a> From<&'a String> for IdRef<'a> {
 }
 
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Path {
     path: String,
     split: usize,
@@ -115,6 +116,7 @@ impl From<String> for Path {
 }
 
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PathRef<'a> {
     path: &'a str,
     split: usize,
