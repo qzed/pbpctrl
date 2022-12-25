@@ -172,11 +172,14 @@ async fn get_battery(handle: ClientHandle, channel: u32) -> anyhow::Result<Runti
     let mut service = MaestroService::new(handle, channel);
 
     let mut call = service.subscribe_to_runtime_info().await?;
-    if let Some(msg) = call.stream().next().await {
-        Ok(msg?)
+    let rt_info = if let Some(msg) = call.stream().next().await {
+        msg?
     } else {
         bail!("did not receive any runtime-info event");
-    }
+    };
+
+    call.cancel_and_wait().await?;
+    Ok(rt_info)
 }
 
 async fn run_client<S, E>(mut client: Client<S>) -> anyhow::Result<()>
