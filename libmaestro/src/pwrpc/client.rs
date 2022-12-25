@@ -115,7 +115,8 @@ where
     }
 
     async fn rpc_complete(&mut self, packet: RpcPacket) {
-        let call = self.find_and_remove_call(&packet);
+        let uid = CallUid::from_packet(&packet);
+        let call = self.find_and_remove_call(uid);
 
         match call {
             Some(mut call) => {     // pending call found, complete rpc
@@ -144,7 +145,8 @@ where
     }
 
     async fn rpc_complete_with_error(&mut self, packet: RpcPacket) {
-        let call = self.find_and_remove_call(&packet);
+        let uid = CallUid::from_packet(&packet);
+        let call = self.find_and_remove_call(uid);
 
         match call {
             Some(mut call) => {     // pending call found, complete rpc with error
@@ -166,7 +168,8 @@ where
     }
 
     async fn rpc_stream_push(&mut self, packet: RpcPacket) -> Result<(), Error> {
-        let call = self.find_call_mut(&packet);
+        let uid = CallUid::from_packet(&packet);
+        let call = self.find_call_mut(uid);
 
         match call {
             Some(call) => {         // pending call found, forward packet to caller
@@ -181,7 +184,7 @@ where
                     // SAFETY: We are the only ones that can add, remove, or
                     //         otherwise modify items in-between the above find
                     //         operation and this one as we have the lock.
-                    let mut call = self.find_and_remove_call(&packet).unwrap();
+                    let mut call = self.find_and_remove_call(uid).unwrap();
 
                     log::warn!(
                         "received stream packet for non-stream rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
@@ -210,10 +213,12 @@ where
 
         let call = Call {
             ty: request.ty,
-            channel_id: packet.channel_id,
-            service_id: packet.service_id,
-            method_id: packet.method_id,
-            call_id: packet.call_id,
+            uid: CallUid {
+                channel: packet.channel_id,
+                service: packet.service_id,
+                method: packet.method_id,
+                call: packet.call_id,
+            },
             sender: request.sender,
         };
 
@@ -226,13 +231,8 @@ where
         self.send(packet).await
     }
 
-    fn find_and_remove_call(&mut self, packet: &RpcPacket) -> Option<Call> {
-        let index = self.pending.iter().position(|call| {
-            call.channel_id == packet.channel_id
-                && call.service_id == packet.service_id
-                && call.method_id == packet.method_id
-                && call.call_id == packet.call_id
-        });
+    fn find_and_remove_call(&mut self, uid: CallUid) -> Option<Call> {
+        let index = self.pending.iter().position(|call| call.uid == uid);
 
         match index {
             Some(index) => Some(self.pending.remove(index)),
@@ -240,13 +240,8 @@ where
         }
     }
 
-    fn find_call_mut(&mut self, packet: &RpcPacket) -> Option<&mut Call> {
-        self.pending.iter_mut().find(|call| {
-            call.channel_id == packet.channel_id
-                && call.service_id == packet.service_id
-                && call.method_id == packet.method_id
-                && call.call_id == packet.call_id
-        })
+    fn find_call_mut(&mut self, uid: CallUid) -> Option<&mut Call> {
+        self.pending.iter_mut().find(|call| call.uid == uid)
     }
 
     async fn send_client_error(&mut self, packet: &RpcPacket, status: Status) -> Result<(), Error> {
@@ -353,6 +348,26 @@ impl ClientHandle {
 }
 
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CallUid {
+    channel: u32,
+    service: u32,
+    method: u32,
+    call: u32,
+}
+
+impl CallUid {
+    fn from_packet(packet: &RpcPacket) -> Self {
+        Self {
+            channel: packet.channel_id,
+            service: packet.service_id,
+            method: packet.method_id,
+            call: packet.call_id
+        }
+    }
+}
+
+
 #[derive(Debug)]
 struct CallRequest {
     ty: RpcType,
@@ -379,12 +394,7 @@ enum CallUpdate {
 #[derive(Debug)]
 struct Call {
     ty: RpcType,
-
-    channel_id: u32,
-    service_id: u32,
-    method_id: u32,
-    call_id: u32,
-
+    uid: CallUid,
     sender: mpsc::UnboundedSender<CallUpdate>,
 }
 
@@ -414,13 +424,13 @@ impl Call {
                 CallUpdate::Complete { .. } => {
                     log::warn!(
                         "cannot send call update, caller is gone: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, update=complete",
-                        self.channel_id, self.service_id, self.method_id, self.call_id,
+                        self.uid.channel, self.uid.service, self.uid.method, self.uid.call,
                     )
                 },
                 CallUpdate::StreamItem { .. } => {
                     log::warn!(
                         "cannot send call update, caller is gone: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, update=stream",
-                        self.channel_id, self.service_id, self.method_id, self.call_id,
+                        self.uid.channel, self.uid.service, self.uid.method, self.uid.call,
                     )
                 },
                 CallUpdate::Error { status } => {
@@ -428,7 +438,7 @@ impl Call {
 
                     log::warn!(
                         "cannot send call update, caller is gone: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, update=error, error={}",
-                        self.channel_id, self.service_id, self.method_id, self.call_id, code,
+                        self.uid.channel, self.uid.service, self.uid.method, self.uid.call, code,
                     )
                 },
             }
