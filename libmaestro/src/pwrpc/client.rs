@@ -191,8 +191,8 @@ where
                         packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                     );
 
-                    self.send_client_error(&packet, Status::InvalidArgument).await?;
                     call.complete_with_error(Status::InvalidArgument).await;
+                    self.send_client_error(uid, Status::InvalidArgument).await?;
                 }
             },
             None => {               // no pending call found, try to notify server
@@ -201,7 +201,7 @@ where
                     packet.service_id, packet.method_id, packet.call_id
                 );
 
-                self.send_client_error(&packet, Status::FailedPrecondition).await?;
+                self.send_client_error(uid, Status::FailedPrecondition).await?;
             },
         }
 
@@ -209,26 +209,50 @@ where
     }
 
     async fn process_request(&mut self, request: CallRequest) -> Result<(), Error> {
-        let packet = request.packet;
+        match request {
+            CallRequest::New { ty, uid, payload, sender } => {
+                let call = Call { ty, uid, sender };
 
-        let call = Call {
-            ty: request.ty,
-            uid: CallUid {
-                channel: packet.channel_id,
-                service: packet.service_id,
-                method: packet.method_id,
-                call: packet.call_id,
+                let packet = RpcPacket {
+                    r#type: PacketType::Request.into(),
+                    channel_id: uid.channel,
+                    service_id: uid.service,
+                    method_id: uid.method,
+                    payload,
+                    status: Status::Ok as _,
+                    call_id: uid.call,
+                };
+
+                log::debug!(
+                    "starting rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
+                    packet.channel_id, packet.service_id, packet.method_id, packet.call_id,
+                );
+
+                self.pending.push(call);
+                self.send(packet).await
+
             },
-            sender: request.sender,
-        };
+            CallRequest::Cancel { uid } => {
+                match self.find_and_remove_call(uid) {
+                    Some(mut call) => {
+                        log::debug!(
+                            "cancelling active rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
+                            uid.channel, uid.service, uid.method, uid.call,
+                        );
 
-        log::debug!(
-            "starting rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
-            packet.channel_id, packet.service_id, packet.method_id, packet.call_id
-        );
-
-        self.pending.push(call);
-        self.send(packet).await
+                        call.complete_with_error(Status::Cancelled).await;
+                        self.send_client_error(uid, Status::Cancelled).await
+                    },
+                    None => {
+                        log::debug!(
+                            "received cancel request for non-pending rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
+                            uid.channel, uid.service, uid.method, uid.call,
+                        );
+                        Ok(())
+                    },
+                }
+            },
+        }
     }
 
     fn find_and_remove_call(&mut self, uid: CallUid) -> Option<Call> {
@@ -244,20 +268,20 @@ where
         self.pending.iter_mut().find(|call| call.uid == uid)
     }
 
-    async fn send_client_error(&mut self, packet: &RpcPacket, status: Status) -> Result<(), Error> {
+    async fn send_client_error(&mut self, uid: CallUid, status: Status) -> Result<(), Error> {
         let status: u32 = status.into();
 
         log::debug!(
             "sending client error packet: status={}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
-            status, packet.channel_id, packet.service_id, packet.method_id, packet.call_id
+            status, uid.channel, uid.service, uid.method, uid.call,
         );
 
         let error_packet = RpcPacket {
             r#type: PacketType::ClientError as _,
-            channel_id: packet.channel_id,
-            service_id: packet.service_id,
-            method_id: packet.method_id,
-            call_id: packet.call_id,
+            channel_id: uid.channel,
+            service_id: uid.service,
+            method_id: uid.method,
+            call_id: uid.call,
             payload: Vec::new(),
             status,
         };
@@ -320,25 +344,18 @@ impl ClientHandle {
     {
         let (sender, receiver) = mpsc::unbounded();
 
-        let packet = RpcPacket {
-            r#type: PacketType::Request.into(),
-            channel_id: request.channel_id,
-            service_id: request.service_id,
-            method_id: request.method_id,
-            payload: request.message.encode_to_vec(),
-            status: Status::Ok as _,
-            call_id: request.call_id,
+        let uid = CallUid {
+            channel: request.channel_id,
+            service: request.service_id,
+            method: request.method_id,
+            call: request.call_id,
         };
 
-        let request = CallRequest {
-            ty,
-            packet,
-            sender,
-        };
+        let payload = request.message.encode_to_vec();
+        let queue_tx = self.queue_tx.clone();
 
-        let handle = CallHandle {
-            receiver,
-        };
+        let request = CallRequest::New { ty, uid, payload, sender };
+        let handle = CallHandle { uid, queue_tx, receiver };
 
         self.queue_tx.send(request).await
             .map_err(|_| Error::aborted("the channel has been closed, no new calls are allowed"))?;
@@ -369,10 +386,16 @@ impl CallUid {
 
 
 #[derive(Debug)]
-struct CallRequest {
-    ty: RpcType,
-    packet: RpcPacket,
-    sender: mpsc::UnboundedSender<CallUpdate>,
+enum CallRequest {
+    New {
+        ty: RpcType,
+        uid: CallUid,
+        payload: Vec<u8>,
+        sender: mpsc::UnboundedSender<CallUpdate>,
+    },
+    Cancel {
+        uid: CallUid,
+    },
 }
 
 
@@ -460,12 +483,21 @@ impl Drop for Call {
 
 
 struct CallHandle {
+    uid: CallUid,
+    queue_tx: mpsc::UnboundedSender<CallRequest>,
     receiver: mpsc::UnboundedReceiver<CallUpdate>,
+}
+
+impl CallHandle {
+    fn cancel(&mut self) -> bool {
+        let request = CallRequest::Cancel { uid: self.uid };
+        self.queue_tx.unbounded_send(request).is_ok()
+    }
 }
 
 impl Drop for CallHandle {
     fn drop(&mut self) {
-        // TODO: cancel/abort this call?
+        self.cancel();
     }
 }
 
@@ -504,6 +536,10 @@ where
         let message = M::decode(&data[..])?;
         Ok(message)
     }
+
+    pub fn cancel(&mut self) -> bool {
+        self.handle.cancel()
+    }
 }
 
 
@@ -521,6 +557,10 @@ where
             marker: std::marker::PhantomData,
             handle: &mut self.handle,
         }
+    }
+
+    pub fn cancel(&mut self) -> bool {
+        self.handle.cancel()
     }
 }
 
