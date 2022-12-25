@@ -493,6 +493,32 @@ impl CallHandle {
         let request = CallRequest::Cancel { uid: self.uid };
         self.queue_tx.unbounded_send(request).is_ok()
     }
+
+    async fn cancel_and_wait(&mut self) -> Result<(), Error> {
+        if !self.cancel() {
+            return Ok(())
+        }
+
+        loop {
+            match self.receiver.next().await {
+                Some(CallUpdate::StreamItem { .. }) => {
+                    continue
+                },
+                Some(CallUpdate::Complete { .. }) => {
+                    return Ok(())
+                },
+                Some(CallUpdate::Error { status }) if status == Status::Cancelled => {
+                    return Ok(())
+                },
+                Some(CallUpdate::Error { status }) => {
+                    return Err(Error::from(status))
+                },
+                None => {
+                    return Ok(())
+                },
+            }
+        }
+    }
 }
 
 impl Drop for CallHandle {
@@ -540,6 +566,10 @@ where
     pub fn cancel(&mut self) -> bool {
         self.handle.cancel()
     }
+
+    pub async fn cancel_and_wait(&mut self) -> Result<(), Error> {
+        self.handle.cancel_and_wait().await
+    }
 }
 
 
@@ -561,6 +591,10 @@ where
 
     pub fn cancel(&mut self) -> bool {
         self.handle.cancel()
+    }
+
+    pub async fn cancel_and_wait(&mut self) -> Result<(), Error> {
+        self.handle.cancel_and_wait().await
     }
 }
 
