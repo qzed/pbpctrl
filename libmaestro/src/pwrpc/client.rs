@@ -232,21 +232,21 @@ where
                 self.send(packet).await
 
             },
-            CallRequest::Cancel { uid } => {
+            CallRequest::Error { uid, code } => {
                 match self.find_and_remove_call(uid) {
                     Some(mut call) => {
                         log::debug!(
-                            "cancelling active rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
-                            uid.channel, uid.service, uid.method, uid.call,
+                            "cancelling active rpc with code: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, code={}",
+                            uid.channel, uid.service, uid.method, uid.call, code as u32,
                         );
 
-                        call.complete_with_error(Status::Cancelled).await;
-                        self.send_client_error(uid, Status::Cancelled).await
+                        call.complete_with_error(code).await;
+                        self.send_client_error(uid, code).await
                     },
                     None => {
                         log::debug!(
-                            "received cancel request for non-pending rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
-                            uid.channel, uid.service, uid.method, uid.call,
+                            "received error request for non-pending rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, code={}",
+                            uid.channel, uid.service, uid.method, uid.call, code as u32,
                         );
                         Ok(())
                     },
@@ -393,8 +393,9 @@ enum CallRequest {
         payload: Vec<u8>,
         sender: mpsc::UnboundedSender<CallUpdate>,
     },
-    Cancel {
+    Error {
         uid: CallUid,
+        code: Status,
     },
 }
 
@@ -489,9 +490,13 @@ struct CallHandle {
 }
 
 impl CallHandle {
-    fn cancel(&mut self) -> bool {
-        let request = CallRequest::Cancel { uid: self.uid };
+    fn error(&mut self, code: Status) -> bool {
+        let request = CallRequest::Error { uid: self.uid, code };
         self.queue_tx.unbounded_send(request).is_ok()
+    }
+
+    fn cancel(&mut self) -> bool {
+        self.error(Status::Cancelled)
     }
 
     async fn cancel_and_wait(&mut self) -> Result<(), Error> {
@@ -633,8 +638,17 @@ where
             },
         };
 
-        let message = M::decode(&data[..])?;
-        Poll::Ready(Some(Ok(message)))
+        let result = match M::decode(&data[..]) {
+            Ok(message) => {
+                Ok(message)
+            },
+            Err(e) => {
+                self.handle.error(Status::InvalidArgument);
+                Err(e.into())
+            },
+        };
+
+        Poll::Ready(Some(result))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
