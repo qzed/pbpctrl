@@ -78,6 +78,84 @@ where
         }
     }
 
+    pub async fn terminate(&mut self) -> Result<(), Error> {
+        log::debug!("terminating client");
+
+        // Collect messages to be sent instead of directly sending them. We
+        // process infallible (local) operations first, before we try to
+        // communicate with the RPC peer, which is fallible.
+        let mut send = Vec::new();
+
+        // Close our request queue.
+        self.queue_rx.close();
+
+        // Process all pending requests. Abort requests for new calls and
+        // send/forward any errors.
+        //
+        // SAFETY: try_next() can only return an error when the channel has not
+        // been closed yet.
+        while let Some(msg) = self.queue_rx.try_next().unwrap() {
+            match msg {
+                CallRequest::New { sender, .. } => {
+                    // Drop new requests. Instead, notify caller with status 'aborted'.
+                    let update = CallUpdate::Error { status: Status::Aborted };
+                    let _ = sender.unbounded_send(update);
+                    sender.close_channel();
+                },
+                CallRequest::Error { uid, code } => {
+                    // Process error requests as normal: Send error message to
+                    // peer, remove and complete call.
+                    if let Some(mut call) = self.find_and_remove_call(uid) {
+                        call.complete_with_error(code).await;
+                        send.push((uid, code));
+                    }
+                },
+            }
+        }
+
+        // Cancel all pending RPCs and remove them from the list.
+        for call in &mut self.pending {
+            call.complete_with_error(Status::Aborted).await;
+            send.push((call.uid, Status::Cancelled));
+        }
+        self.pending.clear();
+
+        // Define functions because async try-catch blocks aren't a thing yet...
+        async fn do_send<S, E>(client: &mut Client<S>, send: Vec<(CallUid, Status)>) -> Result<(), Error>
+        where
+            S: Sink<RpcPacket>,
+            S: Stream<Item = Result<RpcPacket, E>> + Unpin,
+            Error: From<S::Error>,
+            Error: From<E>,
+        {
+            for (uid, code) in send {
+                client.send_client_error(uid, code).await?;
+            }
+            Ok(())
+        }
+
+        async fn do_close<S, E>(client: &mut Client<S>) -> Result<(), Error>
+        where
+            S: Sink<RpcPacket>,
+            S: Stream<Item = Result<RpcPacket, E>> + Unpin,
+            Error: From<S::Error>,
+            Error: From<E>,
+        {
+            client.io_tx.close().await?;
+            Ok(())
+        }
+
+        // Try to send cancel/error messages.
+        let res_send = do_send(self, send).await;
+
+        // Try to close the transport.
+        let res_close = do_close(self).await;
+
+        // Return the first error.
+        res_send?;
+        res_close
+    }
+
     async fn process_packet(&mut self, packet: RpcPacket) -> Result<(), Error> {
         log::debug!(
             "received packet: type=0x{:02x}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
