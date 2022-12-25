@@ -122,7 +122,7 @@ async fn main() -> Result<(), anyhow::Error> {
             res = exec_task => {
                 match res {
                     Ok(_) => {
-                        log::error!("client terminated unexpectedly without error");
+                        log::debug!("client terminated successfully");
                         return Ok(());
                     },
                     Err(e) => {
@@ -208,7 +208,17 @@ where
     Error: From<E>,
     Error: From<S::Error>,
 {
-    client.run().await?;
+    tokio::select! {
+        res = client.run() => {
+            res?;
+        },
+        sig = tokio::signal::ctrl_c() => {
+            sig?;
+            log::debug!("client termination requested");
+        },
+    }
+
+    client.terminate().await?;
     Ok(())
 }
 

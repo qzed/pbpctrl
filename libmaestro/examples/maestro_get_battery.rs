@@ -189,7 +189,17 @@ where
     Error: From<E>,
     Error: From<S::Error>,
 {
-    client.run().await?;
+    tokio::select! {
+        res = client.run() => {
+            res?;
+        },
+        sig = tokio::signal::ctrl_c() => {
+            sig?;
+            log::debug!("client termination requested");
+        },
+    }
+
+    client.terminate().await?;
     Ok(())
 }
 
