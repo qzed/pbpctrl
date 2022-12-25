@@ -492,7 +492,13 @@ struct CallHandle {
 impl CallHandle {
     fn error(&mut self, code: Status) -> bool {
         let request = CallRequest::Error { uid: self.uid, code };
-        self.queue_tx.unbounded_send(request).is_ok()
+        let ok = self.queue_tx.unbounded_send(request).is_ok();
+
+        // Sending an error will complete the RPC. Disconnect our queue end to
+        // prevent more errors/cancel-requests to be sent.
+        self.queue_tx.disconnect();
+
+        ok
     }
 
     fn cancel(&mut self) -> bool {
