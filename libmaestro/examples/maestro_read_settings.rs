@@ -22,7 +22,7 @@ use maestro::service::settings::{self, SettingId};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), anyhow::Error> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     // handle command line arguments
     let addr = std::env::args().nth(1).expect("need device address as argument");
@@ -200,7 +200,7 @@ where
         },
         sig = tokio::signal::ctrl_c() => {
             sig?;
-            log::debug!("client termination requested");
+            tracing::trace!("client termination requested");
         },
     }
 

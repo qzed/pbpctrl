@@ -19,9 +19,7 @@ use maestro::service::MaestroService;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), anyhow::Error> {
-    env_logger::init_from_env(
-        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug")
-    );
+    tracing_subscriber::fmt::init();
 
     // handle command line arguments
     let addr = std::env::args().nth(1).expect("need device address as argument");
@@ -122,11 +120,11 @@ async fn main() -> Result<(), anyhow::Error> {
             res = exec_task => {
                 match res {
                     Ok(_) => {
-                        log::debug!("client terminated successfully");
+                        tracing::trace!("client terminated successfully");
                         return Ok(());
                     },
                     Err(e) => {
-                        log::error!("client task terminated with error");
+                        tracing::error!("client task terminated with error");
 
                         let cause = e.root_cause();
                         if let Some(cause) = cause.downcast_ref::<std::io::Error>() {
@@ -148,11 +146,11 @@ async fn main() -> Result<(), anyhow::Error> {
             res = listen_task => {
                 match res {
                     Ok(_) => {
-                        log::error!("server terminated stream");
+                        tracing::error!("server terminated stream");
                         return Ok(());
                     }
                     Err(e) => {
-                        log::error!("main task terminated with error");
+                        tracing::error!("main task terminated with error");
                         return Err(e);
                     }
                 }
@@ -214,7 +212,7 @@ where
         },
         sig = tokio::signal::ctrl_c() => {
             sig?;
-            log::debug!("client termination requested");
+            tracing::trace!("client termination requested");
         },
     }
 

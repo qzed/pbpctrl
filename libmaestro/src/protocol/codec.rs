@@ -44,7 +44,7 @@ impl Decoder for Codec {
         match self.hdlc.decode(src)? {
             Some(frame) => {
                 if frame.control != 0x03 {
-                    log::warn!("unexpected control type: {}", frame.control);
+                    tracing::warn!("unexpected control type: {}", frame.control);
                     return Ok(None);
                 }
 

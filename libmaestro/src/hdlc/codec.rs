@@ -64,7 +64,7 @@ impl tokio_util::codec::Decoder for Codec {
         match self.dec.process(src) {
             Ok(x) => Ok(x),
             Err(e) => {
-                log::warn!("error decoding data: {e:?}");
+                tracing::warn!("error decoding data: {e:?}");
                 Ok(None)
             },
         }

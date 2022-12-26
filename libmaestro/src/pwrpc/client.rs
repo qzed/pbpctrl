@@ -79,7 +79,7 @@ where
     }
 
     pub async fn terminate(&mut self) -> Result<(), Error> {
-        log::debug!("terminating client");
+        tracing::trace!("terminating client");
 
         // Collect messages to be sent instead of directly sending them. We
         // process infallible (local) operations first, before we try to
@@ -157,7 +157,7 @@ where
     }
 
     async fn process_packet(&mut self, packet: RpcPacket) -> Result<(), Error> {
-        log::debug!(
+        tracing::trace!(
             "received packet: type=0x{:02x}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
             packet.r#type, packet.channel_id, packet.service_id, packet.method_id, packet.call_id
         );
@@ -176,13 +176,13 @@ where
                 self.rpc_stream_push(packet).await?
             },
             Some(_) => {
-                log::error!(
+                tracing::error!(
                     "unsupported packet type: type=0x{:02x}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.r#type, packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                 );
             },
             None => {
-                log::error!(
+                tracing::error!(
                     "unknown packet type: type=0x{:02x}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.r#type, packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                 );
@@ -198,13 +198,13 @@ where
 
         match call {
             Some(mut call) => {     // pending call found, complete rpc
-                log::debug!(
+                tracing::trace!(
                     "completing rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                 );
 
                 if packet.status != 0 {
-                    log::warn!(
+                    tracing::warn!(
                         "completing rpc with non-zero status: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, status={}",
                         packet.channel_id, packet.service_id, packet.method_id, packet.call_id, packet.status
                     );
@@ -214,7 +214,7 @@ where
                 call.complete(packet.payload, status).await;
             },
             None => {               // no pending call found, silently drop packet
-                log::warn!(
+                tracing::warn!(
                     "received response for non-pending rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                 );
@@ -228,7 +228,7 @@ where
 
         match call {
             Some(mut call) => {     // pending call found, complete rpc with error
-                log::debug!(
+                tracing::trace!(
                     "completing rpc with error: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, status={}",
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id, packet.status
                 );
@@ -237,7 +237,7 @@ where
                 call.complete_with_error(status).await;
             },
             None => {               // no pending call found, silently drop packet
-                log::warn!(
+                tracing::warn!(
                     "received error for non-pending rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, status={}",
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id, packet.status
                 );
@@ -251,7 +251,7 @@ where
 
         match call {
             Some(call) => {         // pending call found, forward packet to caller
-                log::debug!(
+                tracing::trace!(
                     "pushing server stream packet to caller: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                 );
@@ -264,7 +264,7 @@ where
                     //         operation and this one as we have the lock.
                     let mut call = self.find_and_remove_call(uid).unwrap();
 
-                    log::warn!(
+                    tracing::warn!(
                         "received stream packet for non-stream rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                         packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                     );
@@ -274,7 +274,7 @@ where
                 }
             },
             None => {               // no pending call found, try to notify server
-                log::warn!(
+                tracing::warn!(
                     "received stream packet for non-pending rpc: service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.service_id, packet.method_id, packet.call_id
                 );
@@ -301,7 +301,7 @@ where
                     call_id: uid.call,
                 };
 
-                log::debug!(
+                tracing::trace!(
                     "starting rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id,
                 );
@@ -313,7 +313,7 @@ where
             CallRequest::Error { uid, code } => {
                 match self.find_and_remove_call(uid) {
                     Some(mut call) => {
-                        log::debug!(
+                        tracing::trace!(
                             "cancelling active rpc with code: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, code={}",
                             uid.channel, uid.service, uid.method, uid.call, code as u32,
                         );
@@ -322,7 +322,7 @@ where
                         self.send_client_error(uid, code).await
                     },
                     None => {
-                        log::debug!(
+                        tracing::trace!(
                             "received error request for non-pending rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, code={}",
                             uid.channel, uid.service, uid.method, uid.call, code as u32,
                         );
@@ -349,7 +349,7 @@ where
     async fn send_client_error(&mut self, uid: CallUid, status: Status) -> Result<(), Error> {
         let status: u32 = status.into();
 
-        log::debug!(
+        tracing::trace!(
             "sending client error packet: status={}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
             status, uid.channel, uid.service, uid.method, uid.call,
         );
@@ -524,13 +524,13 @@ impl Call {
 
             match update {
                 CallUpdate::Complete { .. } => {
-                    log::warn!(
+                    tracing::warn!(
                         "cannot send call update, caller is gone: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, update=complete",
                         self.uid.channel, self.uid.service, self.uid.method, self.uid.call,
                     )
                 },
                 CallUpdate::StreamItem { .. } => {
-                    log::warn!(
+                    tracing::warn!(
                         "cannot send call update, caller is gone: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, update=stream",
                         self.uid.channel, self.uid.service, self.uid.method, self.uid.call,
                     )
@@ -538,7 +538,7 @@ impl Call {
                 CallUpdate::Error { status } => {
                     let code: u32 = status.into();
 
-                    log::warn!(
+                    tracing::warn!(
                         "cannot send call update, caller is gone: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, update=error, error={}",
                         self.uid.channel, self.uid.service, self.uid.method, self.uid.call, code,
                     )
