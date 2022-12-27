@@ -336,7 +336,7 @@ pub struct EqBands {
 
 impl EqBands {
     const MIN_VALUE: f32 = -6.0;
-    const MAX_VALUE: f32 = -6.0;
+    const MAX_VALUE: f32 = 6.0;
 
     pub fn new(low_bass: f32, bass: f32, mid: f32, treble: f32, upper_treble: f32) -> Self {
         Self {
