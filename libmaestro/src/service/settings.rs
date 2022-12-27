@@ -340,11 +340,11 @@ impl EqBands {
 
     pub fn new(low_bass: f32, bass: f32, mid: f32, treble: f32, upper_treble: f32) -> Self {
         Self {
-            low_bass,
-            bass,
-            mid,
-            treble,
-            upper_treble,
+            low_bass: low_bass.clamp(Self::MIN_VALUE, Self::MAX_VALUE),
+            bass: bass.clamp(Self::MIN_VALUE, Self::MAX_VALUE),
+            mid: mid.clamp(Self::MIN_VALUE, Self::MAX_VALUE),
+            treble: treble.clamp(Self::MIN_VALUE, Self::MAX_VALUE),
+            upper_treble: upper_treble.clamp(Self::MIN_VALUE, Self::MAX_VALUE),
         }
     }
 
