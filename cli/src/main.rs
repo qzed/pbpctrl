@@ -62,6 +62,9 @@ enum ShowCommand {
 
 #[derive(Debug, Subcommand)]
 enum GetSetting {
+    /// Get multipoint audio state (enabled/disabled)
+    Multipoint,
+
     /// Get adaptive noise-cancelling gesture loop
     AncGestureLoop,
 
@@ -80,6 +83,13 @@ enum GetSetting {
 
 #[derive(Debug, Subcommand)]
 enum SetSetting {
+    /// Enable/disable multipoint audio
+    Multipoint {
+        /// Whether to enable or disable multipoint audio
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
     /// Set adaptive noise-cancelling gesture loop
     AncGestureLoop {
         /// Enable 'off' mode in loop
@@ -102,7 +112,7 @@ enum SetSetting {
         value: AncState,
     },
 
-    /// Set volume-dependent EQ state (enabled/disabled)
+    /// Enable/disable volume-dependent EQ
     VolumeEq {
         /// Whether to enable or disable volume-dependent EQ
         #[arg(action=clap::ArgAction::Set)]
@@ -199,6 +209,9 @@ async fn main() -> Result<()> {
             ShowCommand::Battery => run(client, cmd_show_battery(handle, channel)).await,
         },
         Command::Get { setting } => match setting {
+            GetSetting::Multipoint => {
+                run(client, cmd_get_setting(handle, channel, settings::id::MultipointEnable)).await
+            },
             GetSetting::AncGestureLoop => {
                 run(client, cmd_get_setting(handle, channel, settings::id::AncrGestureLoop)).await
             }
@@ -216,6 +229,10 @@ async fn main() -> Result<()> {
             },
         },
         Command::Set { setting } => match setting {
+            SetSetting::Multipoint { value } => {
+                let value = SettingValue::MultipointEnable(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
             SetSetting::AncGestureLoop { off, active, aware } => {
                 let value = settings::AncrGestureLoop { off, active, aware };
 
