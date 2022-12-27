@@ -87,6 +87,29 @@ enum SetSetting {
         #[arg(action=clap::ArgAction::Set)]
         value: bool,
     },
+
+    /// Set 5-band EQ
+    Eq {
+        /// Low-bass band (min: -6.0, max: 6.0)
+        #[arg(value_parser=parse_eq_value)]
+        low_bass: f32,
+
+        /// Bass band (min: -6.0, max: 6.0)
+        #[arg(value_parser=parse_eq_value)]
+        bass: f32,
+
+        /// Mid band (min: -6.0, max: 6.0)
+        #[arg(value_parser=parse_eq_value)]
+        mid: f32,
+
+        /// Treble band (min: -6.0, max: 6.0)
+        #[arg(value_parser=parse_eq_value)]
+        treble: f32,
+
+        /// Upper treble band (min: -6.0, max: 6.0)
+        #[arg(value_parser=parse_eq_value)]
+        upper_treble: f32,
+    },
 }
 
 #[derive(Debug, ValueEnum, Clone, Copy)]
@@ -154,6 +177,9 @@ async fn main() -> Result<()> {
             GetSetting::VolumeEq => {
                 run(client, cmd_get_setting(handle, channel, settings::id::VolumeEqEnable)).await
             },
+            GetSetting::Eq => {
+                run(client, cmd_get_setting(handle, channel, settings::id::CurrentUserEq)).await
+            },
         },
         Command::Set { setting } => match setting {
             SetSetting::Anc { value } => {
@@ -162,6 +188,11 @@ async fn main() -> Result<()> {
             },
             SetSetting::VolumeEq { value } => {
                 let value = SettingValue::VolumeEqEnable(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
+            SetSetting::Eq { low_bass, bass, mid, treble, upper_treble } => {
+                let value = settings::EqBands::new(low_bass, bass, mid, treble, upper_treble);
+                let value = SettingValue::CurrentUserEq(value);
                 run(client, cmd_set_setting(handle, channel, value)).await
             },
         },
@@ -425,4 +456,16 @@ where
 
     tracing::trace!("client terminated successfully");
     Ok(())
+}
+
+fn parse_eq_value(s: &str) -> std::result::Result<f32, String> {
+    let val = s.parse().map_err(|e| format!("{}", e))?;
+
+    if val > settings::EqBands::MAX_VALUE {
+        Err(format!("exceeds maximum of {}", settings::EqBands::MAX_VALUE))
+    } else if val < settings::EqBands::MIN_VALUE {
+        Err(format!("exceeds minimum of {}", settings::EqBands::MIN_VALUE))
+    } else {
+        Ok(val)
+    }
 }
