@@ -2,7 +2,7 @@ mod bt;
 
 use anyhow::Result;
 use bluer::Address;
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum, CommandFactory};
 
 use futures::{Future, StreamExt};
 use maestro::protocol::{utils, addr};
@@ -62,6 +62,9 @@ enum ShowCommand {
 
 #[derive(Debug, Subcommand)]
 enum GetSetting {
+    /// Get adaptive noise-cancelling gesture loop
+    AncGestureLoop,
+
     /// Get adaptive noise-cancelling state
     Anc,
 
@@ -77,6 +80,21 @@ enum GetSetting {
 
 #[derive(Debug, Subcommand)]
 enum SetSetting {
+    /// Set adaptive noise-cancelling gesture loop
+    AncGestureLoop {
+        /// Enable 'off' mode in loop
+        #[arg(action=clap::ArgAction::Set)]
+        off: bool,
+
+        /// Enable 'active' mode in loop
+        #[arg(action=clap::ArgAction::Set)]
+        active: bool,
+
+        /// Enable 'aware' mode in loop
+        #[arg(action=clap::ArgAction::Set)]
+        aware: bool,
+    },
+
     /// Set adaptive noise-cancelling state
     Anc {
         /// ANC state
@@ -181,6 +199,9 @@ async fn main() -> Result<()> {
             ShowCommand::Battery => run(client, cmd_show_battery(handle, channel)).await,
         },
         Command::Get { setting } => match setting {
+            GetSetting::AncGestureLoop => {
+                run(client, cmd_get_setting(handle, channel, settings::id::AncrGestureLoop)).await
+            }
             GetSetting::Anc => {
                 run(client, cmd_get_setting(handle, channel, settings::id::CurrentAncrState)).await
             },
@@ -195,6 +216,23 @@ async fn main() -> Result<()> {
             },
         },
         Command::Set { setting } => match setting {
+            SetSetting::AncGestureLoop { off, active, aware } => {
+                let value = settings::AncrGestureLoop { off, active, aware };
+
+                if !value.is_valid() {
+                    use clap::error::ErrorKind;
+
+                    let mut cmd = Args::command();
+                    let err = cmd.error(
+                        ErrorKind::InvalidValue,
+                        "This command requires at least tow enabled ('true') modes"
+                    );
+                    err.exit();
+                }
+
+                let value = SettingValue::AncrGestureLoop(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
             SetSetting::Anc { value } => {
                 let value = SettingValue::CurrentAncrState(value.into());
                 run(client, cmd_set_setting(handle, channel, value)).await
