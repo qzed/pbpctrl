@@ -226,19 +226,19 @@ impl std::fmt::Display for RegularActionTarget {
 pub struct AncrGestureLoop {
     pub active: bool,
     pub off: bool,
-    pub transparency: bool,
+    pub aware: bool,
 }
 
 impl AncrGestureLoop {
     pub fn is_valid(&self) -> bool {
         // at least two need to be set
-        (self.active as u32 + self.off as u32 + self.transparency as u32) >= 2
+        (self.active as u32 + self.off as u32 + self.aware as u32) >= 2
     }
 }
 
 impl From<types::AncrGestureLoop> for AncrGestureLoop {
     fn from(other: types::AncrGestureLoop) -> Self {
-        AncrGestureLoop { active: other.active, off: other.off, transparency: other.transparency }
+        AncrGestureLoop { active: other.active, off: other.off, aware: other.aware }
     }
 }
 
@@ -247,7 +247,7 @@ impl From<AncrGestureLoop> for types::AncrGestureLoop {
         Self {
             active: other.active,
             off: other.off,
-            transparency: other.transparency,
+            aware: other.aware,
         }
     }
 }
@@ -272,12 +272,12 @@ impl std::fmt::Display for AncrGestureLoop {
             n += 1;
         }
 
-        if self.transparency {
+        if self.aware {
             if n > 0 {
                 write!(f, ", ")?;
             }
 
-            write!(f, "transparency")?;
+            write!(f, "aware")?;
         }
 
         write!(f, "]")

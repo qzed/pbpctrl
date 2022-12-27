@@ -158,7 +158,7 @@ enum RegularActionTarget {
 message AncrGestureLoop {
     bool active = 1;
     bool off = 2;
-    bool transparency = 3;
+    bool aware = 3;
 }
 
 enum AncState {
