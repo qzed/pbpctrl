@@ -9,9 +9,9 @@ use std::str::FromStr;
 
 use anyhow::bail;
 use bluer::{Address, Session};
-use futures::StreamExt;
 
 use maestro::protocol::codec::Codec;
+use maestro::protocol::utils;
 use maestro::pwrpc::client::{Client, ClientHandle};
 use maestro::service::MaestroService;
 use maestro::service::settings::{self, SettingId};
@@ -60,39 +60,14 @@ async fn main() -> Result<(), anyhow::Error> {
 
     // set up stream for RPC communication
     let codec = Codec::new();
-    let mut stream = codec.wrap(stream);
-
-    // retreive the channel numer
-    //
-    // Note: this is a bit hacky. The protocol works with different channels,
-    // depending on which bud is active (or case...), and which peer we
-    // represent (Maestro A or B). Only one is responsive and ther doesn't seem
-    // to be a good way to figure out which.
-    //
-    // The app seems to do this by firing off one GetSoftwareInfo request per
-    // potential channel, waiting for responses and choosing the responsive
-    // one. However, the buds also automatically send one GetSoftwareInfo
-    // response on the right channel without a request right after establishing
-    // a connection. So for now we just listen for that first message,
-    // discarding all but the channel id.
-
-    let mut channel = 0;
-
-    while let Some(packet) = stream.next().await {
-        match packet {
-            Ok(packet) => {
-                channel = packet.channel_id;
-                break;
-            }
-            Err(e) => {
-                Err(e)?
-            }
-        }
-    }
+    let stream = codec.wrap(stream);
 
     // set up RPC client
-    let client = Client::new(stream);
+    let mut client = Client::new(stream);
     let handle = client.handle();
+
+    // retreive the channel numer
+    let channel = utils::resolve_channel(&mut client).await?;
 
     let exec_task = common::run_client(client);
     let settings_task = read_settings(handle, channel);

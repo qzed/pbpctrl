@@ -58,6 +58,12 @@ where
     }
 
     pub async fn run(&mut self) -> Result<(), Error> {
+        // Process the request queue first in case we are trying to catch some
+        // early RPC responses via open() calls.
+        while let Ok(Some(request)) = self.queue_rx.try_next() {
+            self.process_request(request).await?;
+        }
+
         loop {
             tokio::select! {
                 packet = self.io_rx.next() => {
