@@ -629,7 +629,7 @@ struct CallHandle {
 
 impl CallHandle {
     fn is_complete(&self) -> bool {
-        self.receiver.is_terminated()
+        self.queue_tx.is_closed()
     }
 
     fn error(&mut self, code: Status, tx: bool) -> bool {
@@ -724,6 +724,8 @@ where
             CallUpdate::StreamItem { .. } => unreachable!("received stream update on unary rpc"),
         };
 
+        self.handle.queue_tx.disconnect();
+
         let message = M::decode(&data[..])?;
         Ok(message)
     }
@@ -814,10 +816,12 @@ where
                 // This indicates the end of the stream. The payload
                 // should be empty.
                 self.handle.receiver.close();
+                self.handle.queue_tx.disconnect();
                 return Poll::Ready(None);
             },
             CallUpdate::Error { status } => {
                 self.handle.receiver.close();
+                self.handle.queue_tx.disconnect();
                 return Poll::Ready(Some(Err(Error::from(status))));
             },
         };
