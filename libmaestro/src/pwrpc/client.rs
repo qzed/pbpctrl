@@ -303,7 +303,7 @@ where
                     call_id: uid.call,
                 };
 
-                let action = if tx { "starting" } else { "openint" };
+                let action = if tx { "starting" } else { "opening" };
                 tracing::trace!(
                     "{} rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     action, packet.channel_id, packet.service_id, packet.method_id, packet.call_id,
