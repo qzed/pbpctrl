@@ -1,0 +1,233 @@
+use bluer::Address;
+use clap::{Parser, Subcommand, ValueEnum};
+
+use maestro::service::settings;
+
+
+/// Control Google Pixel Buds Pro from the command line
+#[derive(Debug, Parser)]
+#[command(author, version, about, long_about = None)]
+pub struct Args {
+    /// Device to use (search for compatible device if unspecified)
+    #[arg(short, long, global=true)]
+    pub device: Option<Address>,
+
+    #[command(subcommand)]
+    pub command: Command
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Command {
+    /// Show device information
+    Show {
+        #[command(subcommand)]
+        command: ShowCommand
+    },
+
+    /// Read settings value
+    Get {
+        #[command(subcommand)]
+        setting: GetSetting
+    },
+
+    /// Write settings value
+    Set {
+        #[command(subcommand)]
+        setting: SetSetting
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ShowCommand {
+    /// Show software information.
+    Software,
+
+    /// Show hardware information.
+    Hardware,
+
+    /// Show runtime information.
+    Runtime,
+
+    /// Show battery status.
+    Battery,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum GetSetting {
+    /// Get gesture state (enabled/disabled)
+    Gestures,
+
+    /// Get diagnostics state (enabled/disabled)
+    Diagnostics,
+
+    /// Get hold-gesture action
+    GestureControl,
+
+    /// Get multipoint audio state (enabled/disabled)
+    Multipoint,
+
+    /// Get adaptive noise-cancelling gesture loop
+    AncGestureLoop,
+
+    /// Get adaptive noise-cancelling state
+    Anc,
+
+    /// Get volume-dependent EQ state (enabled/disabled)
+    VolumeEq,
+
+    /// Get 5-band EQ
+    Eq,
+
+    /// Get volume balance
+    Balance,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SetSetting {
+    /// Enable/disable gestures
+    Gestures {
+        /// Whether to enable or disable gestures
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
+    /// Enable/disable diagnostics
+    Diagnostics {
+        /// Whether to enable or disable diagnostics
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
+    /// Set hold-gesture action
+    GestureControl {
+        /// Left gesture action
+        #[arg(value_enum)]
+        left: HoldGestureAction,
+
+        /// Right gesture action
+        #[arg(value_enum)]
+        right: HoldGestureAction,
+    },
+
+    /// Enable/disable multipoint audio
+    Multipoint {
+        /// Whether to enable or disable multipoint audio
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
+    /// Set adaptive noise-cancelling gesture loop
+    AncGestureLoop {
+        /// Enable 'off' mode in loop
+        #[arg(action=clap::ArgAction::Set)]
+        off: bool,
+
+        /// Enable 'active' mode in loop
+        #[arg(action=clap::ArgAction::Set)]
+        active: bool,
+
+        /// Enable 'aware' mode in loop
+        #[arg(action=clap::ArgAction::Set)]
+        aware: bool,
+    },
+
+    /// Set adaptive noise-cancelling state
+    Anc {
+        /// ANC state
+        #[arg(value_enum)]
+        value: AncState,
+    },
+
+    /// Enable/disable volume-dependent EQ
+    VolumeEq {
+        /// Whether to enable or disable volume-dependent EQ
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
+    /// Set 5-band EQ
+    Eq {
+        /// Low-bass band (min: -6.0, max: 6.0)
+        #[arg(value_parser=parse_eq_value)]
+        low_bass: f32,
+
+        /// Bass band (min: -6.0, max: 6.0)
+        #[arg(value_parser=parse_eq_value)]
+        bass: f32,
+
+        /// Mid band (min: -6.0, max: 6.0)
+        #[arg(value_parser=parse_eq_value)]
+        mid: f32,
+
+        /// Treble band (min: -6.0, max: 6.0)
+        #[arg(value_parser=parse_eq_value)]
+        treble: f32,
+
+        /// Upper treble band (min: -6.0, max: 6.0)
+        #[arg(value_parser=parse_eq_value)]
+        upper_treble: f32,
+    },
+
+    /// Set volume balance
+    Balance {
+        /// Volume balance (-100 to +100)
+        #[arg(value_parser=parse_balance)]
+        value: i32,
+    },
+}
+
+#[derive(Debug, ValueEnum, Clone, Copy)]
+pub enum AncState {
+    Off,
+    Active,
+    Aware,
+}
+
+impl From<AncState> for settings::AncState {
+    fn from(value: AncState) -> Self {
+        match value {
+            AncState::Off => settings::AncState::Off,
+            AncState::Active => settings::AncState::Active,
+            AncState::Aware => settings::AncState::Aware,
+        }
+    }
+}
+
+#[derive(Debug, ValueEnum, Clone, Copy)]
+pub enum HoldGestureAction {
+    Anc,
+    Assistant,
+}
+
+impl From<HoldGestureAction> for settings::RegularActionTarget {
+    fn from(value: HoldGestureAction) -> Self {
+        match value {
+            HoldGestureAction::Anc => settings::RegularActionTarget::AncControl,
+            HoldGestureAction::Assistant => settings::RegularActionTarget::AssistantQuery,
+        }
+    }
+}
+
+fn parse_eq_value(s: &str) -> std::result::Result<f32, String> {
+    let val = s.parse().map_err(|e| format!("{}", e))?;
+
+    if val > settings::EqBands::MAX_VALUE {
+        Err(format!("exceeds maximum of {}", settings::EqBands::MAX_VALUE))
+    } else if val < settings::EqBands::MIN_VALUE {
+        Err(format!("exceeds minimum of {}", settings::EqBands::MIN_VALUE))
+    } else {
+        Ok(val)
+    }
+}
+
+fn parse_balance(s: &str) -> std::result::Result<i32, String> {
+    let val = s.parse().map_err(|e| format!("{}", e))?;
+
+    if val > 100 {
+        Err("exceeds maximum of 100".to_string())
+    } else if val < -100 {
+        Err("exceeds minimum of -100".to_string())
+    } else {
+        Ok(val)
+    }
+}
