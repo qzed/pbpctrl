@@ -62,6 +62,9 @@ enum ShowCommand {
 
 #[derive(Debug, Subcommand)]
 enum GetSetting {
+    /// Get gesture state (enabled/disabled)
+    Gestures,
+
     /// Get multipoint audio state (enabled/disabled)
     Multipoint,
 
@@ -83,6 +86,13 @@ enum GetSetting {
 
 #[derive(Debug, Subcommand)]
 enum SetSetting {
+    /// Enable/disable gestures
+    Gestures {
+        /// Whether to enable or disable gestures
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
     /// Enable/disable multipoint audio
     Multipoint {
         /// Whether to enable or disable multipoint audio
@@ -209,6 +219,9 @@ async fn main() -> Result<()> {
             ShowCommand::Battery => run(client, cmd_show_battery(handle, channel)).await,
         },
         Command::Get { setting } => match setting {
+            GetSetting::Gestures => {
+                run(client, cmd_get_setting(handle, channel, settings::id::GestureEnable)).await
+            },
             GetSetting::Multipoint => {
                 run(client, cmd_get_setting(handle, channel, settings::id::MultipointEnable)).await
             },
@@ -229,6 +242,10 @@ async fn main() -> Result<()> {
             },
         },
         Command::Set { setting } => match setting {
+            SetSetting::Gestures { value } => {
+                let value = SettingValue::GestureEnable(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
             SetSetting::Multipoint { value } => {
                 let value = SettingValue::MultipointEnable(value);
                 run(client, cmd_set_setting(handle, channel, value)).await
