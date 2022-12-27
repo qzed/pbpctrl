@@ -222,7 +222,7 @@ where
                 call.complete(packet.payload, status).await;
             },
             None => {               // no pending call found, silently drop packet
-                tracing::warn!(
+                tracing::debug!(
                     "received response for non-pending rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                 );
@@ -245,7 +245,7 @@ where
                 call.complete_with_error(status).await;
             },
             None => {               // no pending call found, silently drop packet
-                tracing::warn!(
+                tracing::debug!(
                     "received error for non-pending rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, status={}",
                     packet.channel_id, packet.service_id, packet.method_id, packet.call_id, packet.status
                 );
@@ -282,7 +282,7 @@ where
                 }
             },
             None => {               // no pending call found, try to notify server
-                tracing::warn!(
+                tracing::debug!(
                     "received stream packet for non-pending rpc: service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.service_id, packet.method_id, packet.call_id
                 );
