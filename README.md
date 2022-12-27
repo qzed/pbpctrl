@@ -24,7 +24,7 @@ Run `pbpctrl help` for more information.
 The Pixel Buds Pro support basic battery information via the AVCPR standard.
 Support for this is still experimental in BlueZ and needs to be enabled manually by editing `/etc/bluetooth/main.conf` and setting
 ```
-[BR]
+[General]
 Experimental = true
 ```
 or by starting BlueZ with the `--experimental` flag.
