@@ -102,12 +102,14 @@ where
                     let _ = sender.unbounded_send(update);
                     sender.close_channel();
                 },
-                CallRequest::Error { uid, code } => {
+                CallRequest::Error { uid, code, tx } => {
                     // Process error requests as normal: Send error message to
                     // peer, remove and complete call.
                     if let Some(mut call) = self.find_and_remove_call(uid) {
                         call.complete_with_error(code).await;
-                        send.push((uid, code));
+                        if tx {
+                            send.push((uid, code));
+                        }
                     }
                 },
             }
@@ -314,7 +316,7 @@ where
 
                 Ok(())
             },
-            CallRequest::Error { uid, code } => {
+            CallRequest::Error { uid, code, tx } => {
                 match self.find_and_remove_call(uid) {
                     Some(mut call) => {
                         tracing::trace!(
@@ -323,7 +325,11 @@ where
                         );
 
                         call.complete_with_error(code).await;
-                        self.send_client_error(uid, code).await
+                        if tx {
+                            self.send_client_error(uid, code).await?;
+                        }
+
+                        Ok(())
                     },
                     None => {
                         tracing::trace!(
@@ -526,6 +532,7 @@ enum CallRequest {
     Error {
         uid: CallUid,
         code: Status,
+        tx: bool,
     },
 }
 
@@ -620,8 +627,8 @@ struct CallHandle {
 }
 
 impl CallHandle {
-    fn error(&mut self, code: Status) -> bool {
-        let request = CallRequest::Error { uid: self.uid, code };
+    fn error(&mut self, code: Status, tx: bool) -> bool {
+        let request = CallRequest::Error { uid: self.uid, code, tx };
         let ok = self.queue_tx.unbounded_send(request).is_ok();
 
         // Sending an error will complete the RPC. Disconnect our queue end to
@@ -631,8 +638,12 @@ impl CallHandle {
         ok
     }
 
+    fn abandon(&mut self) -> bool {
+        self.error(Status::Cancelled, false)
+    }
+
     fn cancel(&mut self) -> bool {
-        self.error(Status::Cancelled)
+        self.error(Status::Cancelled, true)
     }
 
     async fn cancel_and_wait(&mut self) -> Result<(), Error> {
@@ -704,6 +715,10 @@ where
         Ok(message)
     }
 
+    pub fn abandon(&mut self) -> bool {
+        self.handle.abandon()
+    }
+
     pub fn cancel(&mut self) -> bool {
         self.handle.cancel()
     }
@@ -728,6 +743,10 @@ where
             marker: std::marker::PhantomData,
             handle: &mut self.handle,
         }
+    }
+
+    pub fn abandon(&mut self) -> bool {
+        self.handle.abandon()
     }
 
     pub fn cancel(&mut self) -> bool {
@@ -779,7 +798,7 @@ where
                 Ok(message)
             },
             Err(e) => {
-                self.handle.error(Status::InvalidArgument);
+                self.handle.error(Status::InvalidArgument, true);
                 Err(e.into())
             },
         };
