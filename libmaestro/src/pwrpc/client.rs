@@ -627,6 +627,10 @@ struct CallHandle {
 }
 
 impl CallHandle {
+    fn is_complete(&self) -> bool {
+        self.receiver.is_terminated()
+    }
+
     fn error(&mut self, code: Status, tx: bool) -> bool {
         let request = CallRequest::Error { uid: self.uid, code, tx };
         let ok = self.queue_tx.unbounded_send(request).is_ok();
@@ -726,6 +730,10 @@ where
     pub async fn cancel_and_wait(&mut self) -> Result<(), Error> {
         self.handle.cancel_and_wait().await
     }
+
+    pub fn is_complete(&self) -> bool {
+        self.handle.is_complete()
+    }
 }
 
 
@@ -755,6 +763,10 @@ where
 
     pub async fn cancel_and_wait(&mut self) -> Result<(), Error> {
         self.handle.cancel_and_wait().await
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.handle.is_complete()
     }
 }
 
