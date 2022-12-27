@@ -196,12 +196,12 @@ pub enum RegularActionTarget {
 impl RegularActionTarget {
     pub fn as_str(&self) -> &'static str {
         match self {
-            RegularActionTarget::CheckNotifications => "check notifications",
-            RegularActionTarget::PreviousTrackRepeat => "previous track/repeat",
-            RegularActionTarget::NextTrack => "next track",
-            RegularActionTarget::PlayPauseTrack => "play/pause track",
-            RegularActionTarget::AncControl => "toggle ANC mode",
-            RegularActionTarget::AssistantQuery => "assistant query",
+            RegularActionTarget::CheckNotifications => "check-notifications",
+            RegularActionTarget::PreviousTrackRepeat => "previous",
+            RegularActionTarget::NextTrack => "next",
+            RegularActionTarget::PlayPauseTrack => "play-pause",
+            RegularActionTarget::AncControl => "anc",
+            RegularActionTarget::AssistantQuery => "assistant",
             RegularActionTarget::Unknown(_) => "unknown",
         }
     }
@@ -210,12 +210,12 @@ impl RegularActionTarget {
 impl std::fmt::Display for RegularActionTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RegularActionTarget::CheckNotifications => write!(f, "check notifications"),
-            RegularActionTarget::PreviousTrackRepeat => write!(f, "previous track/repeat"),
-            RegularActionTarget::NextTrack => write!(f, "next track"),
-            RegularActionTarget::PlayPauseTrack => write!(f, "play/pause track"),
-            RegularActionTarget::AncControl => write!(f, "toggle ANC mode"),
-            RegularActionTarget::AssistantQuery => write!(f, "assistant query"),
+            RegularActionTarget::CheckNotifications => write!(f, "check-notifications"),
+            RegularActionTarget::PreviousTrackRepeat => write!(f, "previous"),
+            RegularActionTarget::NextTrack => write!(f, "next"),
+            RegularActionTarget::PlayPauseTrack => write!(f, "play-pause"),
+            RegularActionTarget::AncControl => write!(f, "anc"),
+            RegularActionTarget::AssistantQuery => write!(f, "assistant"),
             RegularActionTarget::Unknown(x) => write!(f, "unknown ({})", x),
         }
     }
