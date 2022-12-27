@@ -288,7 +288,7 @@ where
 
     async fn process_request(&mut self, request: CallRequest) -> Result<(), Error> {
         match request {
-            CallRequest::New { ty, uid, payload, sender } => {
+            CallRequest::New { ty, uid, payload, sender, tx } => {
                 let call = Call { ty, uid, sender };
 
                 let packet = RpcPacket {
@@ -301,14 +301,18 @@ where
                     call_id: uid.call,
                 };
 
+                let action = if tx { "starting" } else { "openint" };
                 tracing::trace!(
-                    "starting rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
-                    packet.channel_id, packet.service_id, packet.method_id, packet.call_id,
+                    "{} rpc: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
+                    action, packet.channel_id, packet.service_id, packet.method_id, packet.call_id,
                 );
 
                 self.pending.push(call);
-                self.send(packet).await
+                if tx {
+                    self.send(packet).await?;
+                }
 
+                Ok(())
             },
             CallRequest::Error { uid, code } => {
                 match self.find_and_remove_call(uid) {
@@ -426,7 +430,60 @@ impl ClientHandle {
         let payload = request.message.encode_to_vec();
         let queue_tx = self.queue_tx.clone();
 
-        let request = CallRequest::New { ty, uid, payload, sender };
+        let request = CallRequest::New { ty, uid, payload, sender, tx: true };
+        let handle = CallHandle { uid, queue_tx, receiver };
+
+        self.queue_tx.send(request).await
+            .map_err(|_| Error::aborted("the channel has been closed, no new calls are allowed"))?;
+
+        Ok(handle)
+    }
+
+    pub async fn open_unary<M>(&mut self, request: Request<()>) -> Result<UnaryResponse<M>, Error>
+    where
+        M: Message + Default,
+    {
+        let handle = self.open(RpcType::Unary, request).await?;
+
+        let response = UnaryResponse {
+            maker: std::marker::PhantomData,
+            handle,
+        };
+
+        Ok(response)
+    }
+
+    pub async fn open_server_stream<M>(&mut self, request: Request<()>) -> Result<StreamResponse<M>, Error>
+    where
+        M: Message + Default,
+    {
+        let handle = self.open(RpcType::ServerStream, request).await?;
+
+        let stream = StreamResponse {
+            marker: std::marker::PhantomData,
+            handle,
+        };
+
+        Ok(stream)
+    }
+
+    async fn open<M>(&mut self, ty: RpcType, request: Request<M>) -> Result<CallHandle, Error>
+    where
+        M: Message,
+    {
+        let (sender, receiver) = mpsc::unbounded();
+
+        let uid = CallUid {
+            channel: request.channel_id,
+            service: request.service_id,
+            method: request.method_id,
+            call: request.call_id,
+        };
+
+        let payload = Vec::new();
+        let queue_tx = self.queue_tx.clone();
+
+        let request = CallRequest::New { ty, uid, payload, sender, tx: false };
         let handle = CallHandle { uid, queue_tx, receiver };
 
         self.queue_tx.send(request).await
@@ -464,6 +521,7 @@ enum CallRequest {
         uid: CallUid,
         payload: Vec<u8>,
         sender: mpsc::UnboundedSender<CallUpdate>,
+        tx: bool,
     },
     Error {
         uid: CallUid,
@@ -777,6 +835,20 @@ where
 
         handle.call_unary(req).await
     }
+
+    pub async fn open(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32)
+        -> Result<UnaryResponse<M2>, Error>
+    {
+        let req = Request {
+            channel_id,
+            service_id: self.path.service().hash(),
+            method_id: self.path.method().hash(),
+            call_id,
+            message: (),
+        };
+
+        handle.open_unary(req).await
+    }
 }
 
 
@@ -812,5 +884,19 @@ where
         };
 
         handle.call_server_stream(req).await
+    }
+
+    pub async fn open(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32)
+        -> Result<StreamResponse<M2>, Error>
+    {
+        let req = Request {
+            channel_id,
+            service_id: self.path.service().hash(),
+            method_id: self.path.method().hash(),
+            call_id,
+            message: (),
+        };
+
+        handle.open_server_stream(req).await
     }
 }
