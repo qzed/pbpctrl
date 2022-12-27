@@ -5,7 +5,7 @@ use anyhow::Result;
 use bluer::{Address, Device, Session};
 use bluer::rfcomm::{ProfileHandle, Role, ReqError, Stream, Profile};
 
-use futures::{Sink, StreamExt};
+use futures::StreamExt;
 
 use maestro::pwrpc::Error;
 use maestro::pwrpc::client::Client;
@@ -14,7 +14,7 @@ use maestro::pwrpc::types::RpcPacket;
 
 pub async fn run_client<S, E>(mut client: Client<S>) -> Result<()>
 where
-    S: Sink<RpcPacket>,
+    S: futures::Sink<RpcPacket>,
     S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
     Error: From<E>,
     Error: From<S::Error>,
