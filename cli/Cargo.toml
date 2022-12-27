@@ -1,7 +1,11 @@
 [package]
 name = "pbpctrl"
+authors = ["Maximilian Luz <m@mxnluz.io>"]
 version = "0.1.0"
 edition = "2021"
+license = "MIT/Apache-2.0"
+description = "Command-line utility for controlling Google Pixel Buds Pro"
+repository = "https://github.com/qzed/pbpctrl"
 
 [dependencies]
 anyhow = "1.0.68"

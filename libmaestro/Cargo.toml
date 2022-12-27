@@ -1,7 +1,11 @@
 [package]
 name = "maestro"
+authors = ["Maximilian Luz <m@mxnluz.io>"]
 version = "0.1.0"
 edition = "2021"
+license = "MIT/Apache-2.0"
+description = "Maestro protocol client implementation for controlling Google Pixel Buds Pro"
+repository = "https://github.com/qzed/pbpctrl"
 
 [dependencies]
 arrayvec = "0.7.2"
