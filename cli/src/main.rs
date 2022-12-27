@@ -65,6 +65,9 @@ enum GetSetting {
     /// Get gesture state (enabled/disabled)
     Gestures,
 
+    /// Get diagnostics state (enabled/disabled)
+    Diagnostics,
+
     /// Get multipoint audio state (enabled/disabled)
     Multipoint,
 
@@ -89,6 +92,13 @@ enum SetSetting {
     /// Enable/disable gestures
     Gestures {
         /// Whether to enable or disable gestures
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
+    /// Enable/disable diagnostics
+    Diagnostics {
+        /// Whether to enable or disable diagnostics
         #[arg(action=clap::ArgAction::Set)]
         value: bool,
     },
@@ -222,6 +232,9 @@ async fn main() -> Result<()> {
             GetSetting::Gestures => {
                 run(client, cmd_get_setting(handle, channel, settings::id::GestureEnable)).await
             },
+            GetSetting::Diagnostics => {
+                run(client, cmd_get_setting(handle, channel, settings::id::DiagnosticsEnable)).await
+            }
             GetSetting::Multipoint => {
                 run(client, cmd_get_setting(handle, channel, settings::id::MultipointEnable)).await
             },
@@ -244,6 +257,10 @@ async fn main() -> Result<()> {
         Command::Set { setting } => match setting {
             SetSetting::Gestures { value } => {
                 let value = SettingValue::GestureEnable(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
+            SetSetting::Diagnostics { value } => {
+                let value = SettingValue::DiagnosticsEnable(value);
                 run(client, cmd_set_setting(handle, channel, value)).await
             },
             SetSetting::Multipoint { value } => {
