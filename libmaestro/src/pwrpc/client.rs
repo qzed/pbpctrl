@@ -437,7 +437,7 @@ impl ClientHandle {
         let queue_tx = self.queue_tx.clone();
 
         let request = CallRequest::New { ty, uid, payload, sender, tx: true };
-        let handle = CallHandle { uid, queue_tx, receiver };
+        let handle = CallHandle { uid, queue_tx, receiver, cancel_on_drop: true };
 
         self.queue_tx.unbounded_send(request)
             .map_err(|_| Error::aborted("the channel has been closed, no new calls are allowed"))?;
@@ -490,7 +490,7 @@ impl ClientHandle {
         let queue_tx = self.queue_tx.clone();
 
         let request = CallRequest::New { ty, uid, payload, sender, tx: false };
-        let handle = CallHandle { uid, queue_tx, receiver };
+        let handle = CallHandle { uid, queue_tx, receiver, cancel_on_drop: false };
 
         self.queue_tx.unbounded_send(request)
             .map_err(|_| Error::aborted("the channel has been closed, no new calls are allowed"))?;
@@ -624,6 +624,7 @@ struct CallHandle {
     uid: CallUid,
     queue_tx: mpsc::UnboundedSender<CallRequest>,
     receiver: mpsc::UnboundedReceiver<CallUpdate>,
+    cancel_on_drop: bool,
 }
 
 impl CallHandle {
@@ -644,6 +645,10 @@ impl CallHandle {
 
     fn abandon(&mut self) -> bool {
         self.error(Status::Cancelled, false)
+    }
+
+    fn cancel_on_drop(&mut self, cancel: bool) {
+        self.cancel_on_drop = cancel
     }
 
     fn cancel(&mut self) -> bool {
@@ -679,7 +684,11 @@ impl CallHandle {
 
 impl Drop for CallHandle {
     fn drop(&mut self) {
-        self.cancel();
+        if self.cancel_on_drop {
+            self.cancel();
+        } else {
+            self.abandon();
+        }
     }
 }
 
@@ -723,6 +732,10 @@ where
         self.handle.abandon()
     }
 
+    pub fn cancel_on_drop(&mut self, cacnel: bool) {
+        self.handle.cancel_on_drop(cacnel)
+    }
+
     pub fn cancel(&mut self) -> bool {
         self.handle.cancel()
     }
@@ -755,6 +768,10 @@ where
 
     pub fn abandon(&mut self) -> bool {
         self.handle.abandon()
+    }
+
+    pub fn cancel_on_drop(&mut self, cacnel: bool) {
+        self.handle.cancel_on_drop(cacnel)
     }
 
     pub fn cancel(&mut self) -> bool {
