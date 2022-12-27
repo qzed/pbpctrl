@@ -64,6 +64,9 @@ enum ShowCommand {
 enum GetSetting {
     /// Get adaptive noise-cancelling state
     Anc,
+
+    /// Get volume-EQ state (enabled/disabled)
+    VolumeEq,
 }
 
 #[derive(Debug, Subcommand)]
@@ -72,6 +75,12 @@ enum SetSetting {
     Anc {
         #[arg(value_enum)]
         value: AncState,
+    },
+
+    /// Set volume-EQ state (enabled/disabled)
+    VolumeEq {
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
     },
 }
 
@@ -137,10 +146,17 @@ async fn main() -> Result<()> {
             GetSetting::Anc => {
                 run(client, cmd_get_setting(handle, channel, settings::id::CurrentAncrState)).await
             },
+            GetSetting::VolumeEq => {
+                run(client, cmd_get_setting(handle, channel, settings::id::VolumeEqEnable)).await
+            },
         },
         Command::Set { setting } => match setting {
             SetSetting::Anc { value } => {
                 let value = SettingValue::CurrentAncrState(value.into());
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
+            SetSetting::VolumeEq { value } => {
+                let value = SettingValue::VolumeEqEnable(value);
                 run(client, cmd_set_setting(handle, channel, value)).await
             },
         },
