@@ -16,3 +16,9 @@ maestro = { path = "../libmaestro" }
 tokio = { version = "1.23.0", features = ["rt", "macros", "signal"] }
 tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
+
+[build-dependencies]
+bluer = { version = "0.15.3" }
+clap = { version = "4.0.32", features = ["derive"] }
+clap_complete = "4.0.7"
+maestro = { path = "../libmaestro" }
