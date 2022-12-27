@@ -373,12 +373,6 @@ where
     }
 }
 
-impl<S> Drop for Client<S> {
-    fn drop(&mut self) {
-        // TODO: cancel all pending calls and wake callers up
-    }
-}
-
 
 #[derive(Debug, Clone)]
 pub struct ClientHandle {
