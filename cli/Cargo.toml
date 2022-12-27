@@ -1,0 +1,14 @@
+[package]
+name = "pbpctrl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.68"
+bluer = { version = "0.15.3", features = ["bluetoothd", "rfcomm"] }
+clap = { version = "4.0.32", features = ["derive"] }
+futures = "0.3.25"
+maestro = { path = "../libmaestro" }
+tokio = { version = "1.23.0", features = ["rt", "macros", "signal"] }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.16"
