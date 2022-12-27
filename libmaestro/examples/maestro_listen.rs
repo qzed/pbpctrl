@@ -163,7 +163,7 @@ async fn run_listener(handle: ClientHandle, channel: u32) -> anyhow::Result<()> 
 }
 
 async fn run_listener_rtinfo(mut service: MaestroService) -> anyhow::Result<()> {
-    let mut call = service.subscribe_to_runtime_info().await?;
+    let mut call = service.subscribe_to_runtime_info()?;
     while let Some(msg) = call.stream().next().await {
         println!("{:#?}", msg?);
     }
@@ -172,7 +172,7 @@ async fn run_listener_rtinfo(mut service: MaestroService) -> anyhow::Result<()> 
 }
 
 async fn run_listener_settings(mut service: MaestroService) -> anyhow::Result<()> {
-    let mut call = service.subscribe_to_settings_changes().await?;
+    let mut call = service.subscribe_to_settings_changes()?;
     while let Some(msg) = call.stream().next().await {
         println!("{:#?}", msg?);
     }

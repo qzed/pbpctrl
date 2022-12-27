@@ -390,12 +390,12 @@ pub struct ClientHandle {
 }
 
 impl ClientHandle {
-    pub async fn call_unary<M1, M2>(&mut self, request: Request<M1>) -> Result<UnaryResponse<M2>, Error>
+    pub fn call_unary<M1, M2>(&mut self, request: Request<M1>) -> Result<UnaryResponse<M2>, Error>
     where
         M1: Message,
         M2: Message + Default,
     {
-        let handle = self.call(RpcType::Unary, request).await?;
+        let handle = self.call(RpcType::Unary, request)?;
 
         let response = UnaryResponse {
             maker: std::marker::PhantomData,
@@ -405,12 +405,12 @@ impl ClientHandle {
         Ok(response)
     }
 
-    pub async fn call_server_stream<M1, M2>(&mut self, request: Request<M1>) -> Result<StreamResponse<M2>, Error>
+    pub fn call_server_stream<M1, M2>(&mut self, request: Request<M1>) -> Result<StreamResponse<M2>, Error>
     where
         M1: Message,
         M2: Message + Default,
     {
-        let handle = self.call(RpcType::ServerStream, request).await?;
+        let handle = self.call(RpcType::ServerStream, request)?;
 
         let stream = StreamResponse {
             marker: std::marker::PhantomData,
@@ -420,7 +420,7 @@ impl ClientHandle {
         Ok(stream)
     }
 
-    async fn call<M>(&mut self, ty: RpcType, request: Request<M>) -> Result<CallHandle, Error>
+    fn call<M>(&mut self, ty: RpcType, request: Request<M>) -> Result<CallHandle, Error>
     where
         M: Message,
     {
@@ -439,17 +439,17 @@ impl ClientHandle {
         let request = CallRequest::New { ty, uid, payload, sender, tx: true };
         let handle = CallHandle { uid, queue_tx, receiver };
 
-        self.queue_tx.send(request).await
+        self.queue_tx.unbounded_send(request)
             .map_err(|_| Error::aborted("the channel has been closed, no new calls are allowed"))?;
 
         Ok(handle)
     }
 
-    pub async fn open_unary<M>(&mut self, request: Request<()>) -> Result<UnaryResponse<M>, Error>
+    pub fn open_unary<M>(&mut self, request: Request<()>) -> Result<UnaryResponse<M>, Error>
     where
         M: Message + Default,
     {
-        let handle = self.open(RpcType::Unary, request).await?;
+        let handle = self.open(RpcType::Unary, request)?;
 
         let response = UnaryResponse {
             maker: std::marker::PhantomData,
@@ -459,11 +459,11 @@ impl ClientHandle {
         Ok(response)
     }
 
-    pub async fn open_server_stream<M>(&mut self, request: Request<()>) -> Result<StreamResponse<M>, Error>
+    pub fn open_server_stream<M>(&mut self, request: Request<()>) -> Result<StreamResponse<M>, Error>
     where
         M: Message + Default,
     {
-        let handle = self.open(RpcType::ServerStream, request).await?;
+        let handle = self.open(RpcType::ServerStream, request)?;
 
         let stream = StreamResponse {
             marker: std::marker::PhantomData,
@@ -473,7 +473,7 @@ impl ClientHandle {
         Ok(stream)
     }
 
-    async fn open<M>(&mut self, ty: RpcType, request: Request<M>) -> Result<CallHandle, Error>
+    fn open<M>(&mut self, ty: RpcType, request: Request<M>) -> Result<CallHandle, Error>
     where
         M: Message,
     {
@@ -492,7 +492,7 @@ impl ClientHandle {
         let request = CallRequest::New { ty, uid, payload, sender, tx: false };
         let handle = CallHandle { uid, queue_tx, receiver };
 
-        self.queue_tx.send(request).await
+        self.queue_tx.unbounded_send(request)
             .map_err(|_| Error::aborted("the channel has been closed, no new calls are allowed"))?;
 
         Ok(handle)
@@ -853,7 +853,7 @@ where
         }
     }
 
-    pub async fn call(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32, message: M1)
+    pub fn call(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32, message: M1)
         -> Result<UnaryResponse<M2>, Error>
     {
         let req = Request {
@@ -864,10 +864,10 @@ where
             message,
         };
 
-        handle.call_unary(req).await
+        handle.call_unary(req)
     }
 
-    pub async fn open(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32)
+    pub fn open(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32)
         -> Result<UnaryResponse<M2>, Error>
     {
         let req = Request {
@@ -878,7 +878,7 @@ where
             message: (),
         };
 
-        handle.open_unary(req).await
+        handle.open_unary(req)
     }
 }
 
@@ -903,7 +903,7 @@ where
         }
     }
 
-    pub async fn call(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32, message: M1)
+    pub fn call(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32, message: M1)
         -> Result<StreamResponse<M2>, Error>
     {
         let req = Request {
@@ -914,10 +914,10 @@ where
             message,
         };
 
-        handle.call_server_stream(req).await
+        handle.call_server_stream(req)
     }
 
-    pub async fn open(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32)
+    pub fn open(&self, handle: &mut ClientHandle, channel_id: u32, call_id: u32)
         -> Result<StreamResponse<M2>, Error>
     {
         let req = Request {
@@ -928,6 +928,6 @@ where
             message: (),
         };
 
-        handle.open_server_stream(req).await
+        handle.open_server_stream(req)
     }
 }
