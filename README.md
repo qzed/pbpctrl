@@ -18,18 +18,19 @@ cargo install pbpctrl --git https://github.com/qzed/pbpctrl/
 ## Instructions
 
 Pair and connect your Pixel Buds Pro before use.
-Run `pbpctrl help` for more infos.
+Run `pbpctrl help` for more information.
 
 
 ## Notes on Battery Information
 
 The Pixel Buds Pro support basic battery information via the AVCPR standard.
-Support for this is still experimental in bluez and needs to be enabled manually by editing `/etc/bluetooth/main.conf` and setting
+Support for this is still experimental in BlueZ and needs to be enabled manually by editing `/etc/bluetooth/main.conf` and setting
 ```
 [BR]
 Experimental = true
 ```
-or by starting bluez with the `--experimental` flag.
+or by starting BlueZ with the `--experimental` flag.
+After this, battery status should be provided via UPower.
 
 Note that this, however, will only provide a single battery meter for both buds combined, and none for the case.
 For more detailed information, use `pbpctrl show battery`.
