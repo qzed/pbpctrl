@@ -597,7 +597,7 @@ impl Call {
                 CallUpdate::Error { status } => {
                     let code: u32 = status.into();
 
-                    tracing::warn!(
+                    tracing::trace!(
                         "cannot send call update, caller is gone: channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}, update=error, error={}",
                         self.uid.channel, self.uid.service, self.uid.method, self.uid.call, code,
                     )
