@@ -70,6 +70,9 @@ enum GetSetting {
 
     /// Get 5-band EQ
     Eq,
+
+    /// Get volume balance
+    Balance,
 }
 
 #[derive(Debug, Subcommand)]
@@ -109,6 +112,13 @@ enum SetSetting {
         /// Upper treble band (min: -6.0, max: 6.0)
         #[arg(value_parser=parse_eq_value)]
         upper_treble: f32,
+    },
+
+    /// Set volume balance
+    Balance {
+        /// Volume balance (-100 to +100)
+        #[arg(value_parser=parse_balance)]
+        value: i32,
     },
 }
 
@@ -180,6 +190,9 @@ async fn main() -> Result<()> {
             GetSetting::Eq => {
                 run(client, cmd_get_setting(handle, channel, settings::id::CurrentUserEq)).await
             },
+            GetSetting::Balance => {
+                run(client, cmd_get_setting(handle, channel, settings::id::VolumeAsymmetry)).await
+            },
         },
         Command::Set { setting } => match setting {
             SetSetting::Anc { value } => {
@@ -195,6 +208,11 @@ async fn main() -> Result<()> {
                 let value = SettingValue::CurrentUserEq(value);
                 run(client, cmd_set_setting(handle, channel, value)).await
             },
+            SetSetting::Balance { value } => {
+                let value = settings::VolumeAsymmetry::from_normalized(value);
+                let value = SettingValue::VolumeAsymmetry(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            }
         },
     }
 }
@@ -465,6 +483,18 @@ fn parse_eq_value(s: &str) -> std::result::Result<f32, String> {
         Err(format!("exceeds maximum of {}", settings::EqBands::MAX_VALUE))
     } else if val < settings::EqBands::MIN_VALUE {
         Err(format!("exceeds minimum of {}", settings::EqBands::MIN_VALUE))
+    } else {
+        Ok(val)
+    }
+}
+
+fn parse_balance(s: &str) -> std::result::Result<i32, String> {
+    let val = s.parse().map_err(|e| format!("{}", e))?;
+
+    if val > 100 {
+        Err("exceeds maximum of 100".to_string())
+    } else if val < -100 {
+        Err("exceeds minimum of -100".to_string())
     } else {
         Ok(val)
     }
