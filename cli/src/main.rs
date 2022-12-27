@@ -2,13 +2,14 @@ mod bt;
 
 use anyhow::Result;
 use bluer::Address;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use futures::{Future, StreamExt};
 use maestro::protocol::{utils, addr};
 use maestro::pwrpc::client::{Client, ClientHandle};
 use maestro::protocol::codec::Codec;
 use maestro::service::MaestroService;
+use maestro::service::settings::{self, Setting, SettingValue};
 
 
 /// Control Google Pixel Buds Pro from the command line
@@ -30,6 +31,18 @@ enum Command {
         #[command(subcommand)]
         command: ShowCommand
     },
+
+    /// Read settings value
+    Get {
+        #[command(subcommand)]
+        setting: GetSetting
+    },
+
+    /// Write settings value
+    Set {
+        #[command(subcommand)]
+        setting: SetSetting
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -45,6 +58,38 @@ enum ShowCommand {
 
     /// Show battery status.
     Battery,
+}
+
+#[derive(Debug, Subcommand)]
+enum GetSetting {
+    /// Get adaptive noise-cancelling state
+    Anc,
+}
+
+#[derive(Debug, Subcommand)]
+enum SetSetting {
+    /// Set adaptive noise-cancelling state
+    Anc {
+        #[arg(value_enum)]
+        value: AncState,
+    },
+}
+
+#[derive(Debug, ValueEnum, Clone, Copy)]
+enum AncState {
+    Off,
+    Active,
+    Aware,
+}
+
+impl From<AncState> for settings::AncState {
+    fn from(value: AncState) -> Self {
+        match value {
+            AncState::Off => settings::AncState::Off,
+            AncState::Active => settings::AncState::Active,
+            AncState::Aware => settings::AncState::Aware,
+        }
+    }
 }
 
 
@@ -87,6 +132,17 @@ async fn main() -> Result<()> {
             ShowCommand::Hardware => run(client, cmd_show_hardware(handle, channel)).await,
             ShowCommand::Runtime => run(client, cmd_show_runtime(handle, channel)).await,
             ShowCommand::Battery => run(client, cmd_show_battery(handle, channel)).await,
+        },
+        Command::Get { setting } => match setting {
+            GetSetting::Anc => {
+                run(client, cmd_get_setting(handle, channel, settings::id::CurrentAncrState)).await
+            },
+        },
+        Command::Set { setting } => match setting {
+            SetSetting::Anc { value } => {
+                let value = SettingValue::CurrentAncrState(value.into());
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
         },
     }
 }
@@ -298,6 +354,26 @@ async fn cmd_show_battery(handle: ClientHandle, channel: u32) -> Result<()> {
         println!("right bud: unknown");
     }
 
+    Ok(())
+}
+
+async fn cmd_get_setting<T>(handle: ClientHandle, channel: u32, setting: T) -> Result<()>
+where
+    T: Setting,
+    T::Type: std::fmt::Display,
+{
+    let mut service = MaestroService::new(handle, channel);
+
+    let value = service.read_setting(setting).await?;
+    println!("{}", value);
+
+    Ok(())
+}
+
+async fn cmd_set_setting(handle: ClientHandle, channel: u32, setting: SettingValue) -> Result<()> {
+    let mut service = MaestroService::new(handle, channel);
+
+    service.write_setting(setting).await?;
     Ok(())
 }
 

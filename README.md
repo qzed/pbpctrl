@@ -2,9 +2,7 @@
 
 Control Google Pixel Buds Pro from the Linux command line.
 
-Allows reading of battery, hardware, software, and runtime information.
-
-To be supported in the future: Reading and changing settings (ANC state, equalizer, ...). 
+Allows reading of battery, hardware, software, and runtime information as well as reading and changing settings (ANC state, equalizer, ...). 
 
 
 ## Installation via `cargo`
