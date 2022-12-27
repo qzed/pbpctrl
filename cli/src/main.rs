@@ -3,8 +3,8 @@ mod bt;
 use anyhow::Result;
 use bluer::Address;
 use clap::{Parser, Subcommand, ValueEnum, CommandFactory};
-
 use futures::{Future, StreamExt};
+
 use maestro::protocol::{utils, addr};
 use maestro::pwrpc::client::{Client, ClientHandle};
 use maestro::protocol::codec::Codec;
