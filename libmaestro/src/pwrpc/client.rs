@@ -380,7 +380,7 @@ pub struct ClientHandle {
 }
 
 impl ClientHandle {
-    pub async fn unary<M1, M2>(&mut self, request: Request<M1>) -> Result<UnaryResponse<M2>, Error>
+    pub async fn call_unary<M1, M2>(&mut self, request: Request<M1>) -> Result<UnaryResponse<M2>, Error>
     where
         M1: Message,
         M2: Message + Default,
@@ -395,7 +395,7 @@ impl ClientHandle {
         Ok(response)
     }
 
-    pub async fn server_stream<M1, M2>(&mut self, request: Request<M1>) -> Result<StreamResponse<M2>, Error>
+    pub async fn call_server_stream<M1, M2>(&mut self, request: Request<M1>) -> Result<StreamResponse<M2>, Error>
     where
         M1: Message,
         M2: Message + Default,
@@ -775,7 +775,7 @@ where
             message,
         };
 
-        handle.unary(req).await
+        handle.call_unary(req).await
     }
 }
 
@@ -811,6 +811,6 @@ where
             message,
         };
 
-        handle.server_stream(req).await
+        handle.call_server_stream(req).await
     }
 }
