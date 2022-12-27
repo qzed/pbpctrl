@@ -68,6 +68,9 @@ enum GetSetting {
     /// Get diagnostics state (enabled/disabled)
     Diagnostics,
 
+    /// Get hold-gesture action
+    GestureControl,
+
     /// Get multipoint audio state (enabled/disabled)
     Multipoint,
 
@@ -101,6 +104,17 @@ enum SetSetting {
         /// Whether to enable or disable diagnostics
         #[arg(action=clap::ArgAction::Set)]
         value: bool,
+    },
+
+    /// Set hold-gesture action
+    GestureControl {
+        /// Left gesture action
+        #[arg(value_enum)]
+        left: HoldGestureAction,
+
+        /// Right gesture action
+        #[arg(value_enum)]
+        right: HoldGestureAction,
     },
 
     /// Enable/disable multipoint audio
@@ -187,6 +201,21 @@ impl From<AncState> for settings::AncState {
     }
 }
 
+#[derive(Debug, ValueEnum, Clone, Copy)]
+enum HoldGestureAction {
+    Anc,
+    Assistant,
+}
+
+impl From<HoldGestureAction> for settings::RegularActionTarget {
+    fn from(value: HoldGestureAction) -> Self {
+        match value {
+            HoldGestureAction::Anc => settings::RegularActionTarget::AncControl,
+            HoldGestureAction::Assistant => settings::RegularActionTarget::AssistantQuery,
+        }
+    }
+}
+
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
@@ -235,6 +264,9 @@ async fn main() -> Result<()> {
             GetSetting::Diagnostics => {
                 run(client, cmd_get_setting(handle, channel, settings::id::DiagnosticsEnable)).await
             }
+            GetSetting::GestureControl => {
+                run(client, cmd_get_setting(handle, channel, settings::id::GestureControl)).await
+            },
             GetSetting::Multipoint => {
                 run(client, cmd_get_setting(handle, channel, settings::id::MultipointEnable)).await
             },
@@ -261,6 +293,11 @@ async fn main() -> Result<()> {
             },
             SetSetting::Diagnostics { value } => {
                 let value = SettingValue::DiagnosticsEnable(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
+            SetSetting::GestureControl { left, right } => {
+                let value = settings::GestureControl { left: left.into(), right: right.into() };
+                let value = SettingValue::GestureControl(value);
                 run(client, cmd_set_setting(handle, channel, value)).await
             },
             SetSetting::Multipoint { value } => {
