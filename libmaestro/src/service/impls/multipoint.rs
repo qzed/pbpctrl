@@ -17,7 +17,7 @@ impl MultipointService {
             client,
             channel_id,
 
-            rpc_sub_quiet_mode_status: ServerStreamRpc::new("maestro_pw.Multipoint.SubscribeToQuietModeStatus"),
+            rpc_sub_quiet_mode_status: ServerStreamRpc::new("maestro_pw.Multipoint/SubscribeToQuietModeStatus"),
         }
     }
 

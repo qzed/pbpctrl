@@ -29,15 +29,15 @@ impl MaestroService {
             client,
             channel_id,
 
-            rpc_get_software_info: UnaryRpc::new("maestro_pw.Maestro.GetSoftwareInfo"),
-            rpc_get_hardware_info: UnaryRpc::new("maestro_pw.Maestro.GetHardwareInfo"),
-            rpc_sub_runtime_info: ServerStreamRpc::new("maestro_pw.Maestro.SubscribeRuntimeInfo"),
+            rpc_get_software_info: UnaryRpc::new("maestro_pw.Maestro/GetSoftwareInfo"),
+            rpc_get_hardware_info: UnaryRpc::new("maestro_pw.Maestro/GetHardwareInfo"),
+            rpc_sub_runtime_info: ServerStreamRpc::new("maestro_pw.Maestro/SubscribeRuntimeInfo"),
 
-            rpc_write_setting: UnaryRpc::new("maestro_pw.Maestro.WriteSetting"),
-            rpc_read_setting: UnaryRpc::new("maestro_pw.Maestro.ReadSetting"),
-            rpc_sub_settings_changes: ServerStreamRpc::new("maestro_pw.Maestro.SubscribeToSettingsChanges"),
+            rpc_write_setting: UnaryRpc::new("maestro_pw.Maestro/WriteSetting"),
+            rpc_read_setting: UnaryRpc::new("maestro_pw.Maestro/ReadSetting"),
+            rpc_sub_settings_changes: ServerStreamRpc::new("maestro_pw.Maestro/SubscribeToSettingsChanges"),
 
-            rpc_sub_oobe_actions: ServerStreamRpc::new("maestro_pw.Maestro.SubscribeToOobeActions"),
+            rpc_sub_oobe_actions: ServerStreamRpc::new("maestro_pw.Maestro/SubscribeToOobeActions"),
         }
     }
 

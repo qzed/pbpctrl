@@ -81,7 +81,7 @@ pub struct Path {
 impl Path {
     pub fn new(path: impl Into<String>) -> Self {
         let path = path.into();
-        let split = path.rfind('.').unwrap_or(0);
+        let split = path.rfind('/').unwrap_or(0);
 
         Path { path, split }
     }
@@ -124,7 +124,7 @@ pub struct PathRef<'a> {
 
 impl<'a> PathRef<'a> {
     pub fn new(path: &'a str) -> Self {
-        let split = path.rfind('.').unwrap_or(0);
+        let split = path.rfind('/').unwrap_or(0);
 
         PathRef { path, split }
     }
@@ -179,13 +179,13 @@ mod test {
 
     #[test]
     fn test_path() {
-        let pref = PathRef::new("maestro_pw.Maestro.GetSoftwareInfo");
+        let pref = PathRef::new("maestro_pw.Maestro/GetSoftwareInfo");
         assert_eq!(pref.service().name(), "maestro_pw.Maestro");
         assert_eq!(pref.service().hash(), 0x7ede71ea);
         assert_eq!(pref.method().name(), "GetSoftwareInfo");
         assert_eq!(pref.method().hash(), 0x7199fa44);
 
-        let pref = PathRef::new("maestro_pw.Maestro.SubscribeToSettingsChanges");
+        let pref = PathRef::new("maestro_pw.Maestro/SubscribeToSettingsChanges");
         assert_eq!(pref.service().name(), "maestro_pw.Maestro");
         assert_eq!(pref.service().hash(), 0x7ede71ea);
         assert_eq!(pref.method().name(), "SubscribeToSettingsChanges");
