@@ -1,0 +1,89 @@
+use std::time::Duration;
+
+use anyhow::Result;
+
+use bluer::{Address, Device, Session};
+use bluer::rfcomm::{ProfileHandle, Role, ReqError, Stream, Profile};
+
+use futures::{Sink, StreamExt};
+
+use maestro::pwrpc::Error;
+use maestro::pwrpc::client::Client;
+use maestro::pwrpc::types::RpcPacket;
+
+
+pub async fn run_client<S, E>(mut client: Client<S>) -> Result<()>
+where
+    S: Sink<RpcPacket>,
+    S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
+    Error: From<E>,
+    Error: From<S::Error>,
+{
+    tokio::select! {
+        res = client.run() => {
+            res?;
+        },
+        sig = tokio::signal::ctrl_c() => {
+            sig?;
+            tracing::trace!("client termination requested");
+        },
+    }
+
+    client.terminate().await?;
+    Ok(())
+}
+
+pub async fn connect_maestro_rfcomm(session: &Session, dev: &Device) -> Result<Stream> {
+    let maestro_profile = Profile {
+        uuid: maestro::UUID,
+        role: Some(Role::Client),
+        require_authentication: Some(false),
+        require_authorization: Some(false),
+        auto_connect: Some(false),
+        ..Default::default()
+    };
+
+    tracing::debug!("registering maestro profile");
+    let mut handle = session.register_profile(maestro_profile).await?;
+
+    tracing::debug!("connecting to maestro profile");
+    let stream = tokio::try_join!(
+        try_connect_profile(dev),
+        handle_requests_for_profile(&mut handle, dev.address()),
+    )?.1;
+
+    Ok(stream)
+}
+
+async fn try_connect_profile(dev: &Device) -> Result<()> {
+    const RETRY_TIMEOUT: Duration = Duration::from_secs(1);
+    const MAX_TRIES: u32 = 3;
+
+    let mut i = 0;
+    while let Err(err) = dev.connect_profile(&maestro::UUID).await {
+        if i >= MAX_TRIES { return Err(err.into()) }
+        i += 1;
+
+        tracing::warn!(error=?err, "connecting to profile failed, trying again ({}/{})", i, MAX_TRIES);
+
+        tokio::time::sleep(RETRY_TIMEOUT).await;
+    }
+
+    tracing::debug!(address=%dev.address(), "maestro profile connected");
+    Ok(())
+}
+
+async fn handle_requests_for_profile(handle: &mut ProfileHandle, address: Address) -> Result<Stream> {
+    while let Some(req) = handle.next().await {
+        tracing::debug!(address=%req.device(), "received new profile connection request");
+
+        if req.device() == address {
+            tracing::debug!(address=%req.device(), "accepting profile connection request");
+            return Ok(req.accept()?);
+        } else {
+            req.reject(ReqError::Rejected);
+        }
+    }
+
+    anyhow::bail!("profile terminated without requests")
+}

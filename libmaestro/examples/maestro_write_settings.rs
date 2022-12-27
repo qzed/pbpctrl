@@ -5,22 +5,19 @@
 //! Usage:
 //!   cargo run --example maestro_write_settings -- <bluetooth-device-address> <anc-state>
 
+mod common;
+
 use std::str::FromStr;
 
 use anyhow::bail;
-
-use bluer::{Address, Session, Device};
-use bluer::rfcomm::{Profile, ReqError, Role, ProfileHandle};
-
-use futures::{StreamExt, Sink};
+use bluer::{Address, Session};
+use futures::StreamExt;
+use num_enum::FromPrimitive;
 
 use maestro::protocol::codec::Codec;
 use maestro::pwrpc::client::{Client, ClientHandle};
-use maestro::pwrpc::types::RpcPacket;
-use maestro::pwrpc::Error;
 use maestro::service::MaestroService;
 use maestro::service::settings::{AncState, SettingValue};
-use num_enum::FromPrimitive;
 
 
 #[tokio::main(flavor = "current_thread")]
@@ -67,25 +64,8 @@ async fn main() -> Result<(), anyhow::Error> {
     }
     println!();
 
-    let stream = {
-        // register GFPS profile
-        println!("Registering Maestro profile...");
-
-        let profile = Profile {
-            uuid: maestro::UUID,
-            role: Some(Role::Client),
-            require_authentication: Some(false),
-            require_authorization: Some(false),
-            auto_connect: Some(false),
-            ..Default::default()
-        };
-
-        let mut profile_handle = session.register_profile(profile).await?;
-
-        // connect profile
-        println!("Connecting GFPS profile...");
-        connect_device_to_profile(&mut profile_handle, &dev).await?
-    };
+    println!("Connecting to Maestro profile");
+    let stream = common::connect_maestro_rfcomm(&session, &dev).await?;
 
     println!("Profile connected");
 
@@ -125,7 +105,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let client = Client::new(stream);
     let handle = client.handle();
 
-    let exec_task = run_client(client);
+    let exec_task = common::run_client(client);
     let settings_task = read_settings(handle, channel, anc_state);
 
     tokio::select! {
@@ -148,54 +128,4 @@ async fn read_settings(handle: ClientHandle, channel: u32, anc_state: AncState) 
     service.write_setting(SettingValue::CurrentAncrState(anc_state)).await?;
 
     Ok(())
-}
-
-async fn run_client<S, E>(mut client: Client<S>) -> anyhow::Result<()>
-where
-    S: Sink<RpcPacket>,
-    S: futures::Stream<Item = Result<RpcPacket, E>> + Unpin,
-    Error: From<E>,
-    Error: From<S::Error>,
-{
-    tokio::select! {
-        res = client.run() => {
-            res?;
-        },
-        sig = tokio::signal::ctrl_c() => {
-            sig?;
-            tracing::trace!("client termination requested");
-        },
-    }
-
-    client.terminate().await?;
-    Ok(())
-}
-
-async fn connect_device_to_profile(profile: &mut ProfileHandle, dev: &Device)
-    -> bluer::Result<bluer::rfcomm::Stream>
-{
-    loop {
-        tokio::select! {
-            res = async {
-                let _ = dev.connect().await;
-                dev.connect_profile(&maestro::UUID).await
-            } => {
-                if let Err(err) = res {
-                    println!("Connecting GFPS profile failed: {:?}", err);
-                }
-                tokio::time::sleep(std::time::Duration::from_millis(3000)).await;
-            },
-            req = profile.next() => {
-                let req = req.expect("no connection request received");
-
-                if req.device() == dev.address() {
-                    println!("Accepting request...");
-                    break req.accept();
-                } else {
-                    println!("Rejecting unknown device {}", req.device());
-                    req.reject(ReqError::Rejected);
-                }
-            },
-        }
-    }
 }
