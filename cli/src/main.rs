@@ -65,20 +65,25 @@ enum GetSetting {
     /// Get adaptive noise-cancelling state
     Anc,
 
-    /// Get volume-EQ state (enabled/disabled)
+    /// Get volume-dependent EQ state (enabled/disabled)
     VolumeEq,
+
+    /// Get 5-band EQ
+    Eq,
 }
 
 #[derive(Debug, Subcommand)]
 enum SetSetting {
     /// Set adaptive noise-cancelling state
     Anc {
+        /// ANC state
         #[arg(value_enum)]
         value: AncState,
     },
 
-    /// Set volume-EQ state (enabled/disabled)
+    /// Set volume-dependent EQ state (enabled/disabled)
     VolumeEq {
+        /// Whether to enable or disable volume-dependent EQ
         #[arg(action=clap::ArgAction::Set)]
         value: bool,
     },
