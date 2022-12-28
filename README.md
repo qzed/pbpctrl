@@ -1,6 +1,6 @@
 # `pbpctrl`
 
-Control Google Pixel Buds Pro from the Linux command line.
+Control Google Pixel Buds Pro from the Linux command line. Might or might not work on other Pixel Buds devices.
 
 Allows reading of battery, hardware, software, and runtime information as well as reading and changing settings (ANC state, equalizer, ...). 
 
