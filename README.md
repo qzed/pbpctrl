@@ -5,12 +5,20 @@ Control Google Pixel Buds Pro from the Linux command line. Might or might not wo
 Allows reading of battery, hardware, software, and runtime information as well as reading and changing settings (ANC state, equalizer, ...). 
 
 
-## Installation via `cargo`
+## Installation
+
+### Arch Linux
+
+A [`pbpctrl`](https://aur.archlinux.org/packages/pbpctrl) package is provided via the AUR.
+Alternatively, the [`pbpctrl-git`](https://aur.archlinux.org/packages/pbpctrl-git) package can be used to directly build from the latest state on the `main` branch.
+
+### Installation via `cargo`
 
 To build install the binary via cargo, run
 ```sh
 cargo install pbpctrl --git https://github.com/qzed/pbpctrl/
 ```
+Use the `--tag` option if you want to install a specific tag instead of the latest `main` branch.
 
 
 ## Instructions
