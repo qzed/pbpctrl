@@ -227,7 +227,7 @@ pub enum SetSetting {
 
     /// Set volume balance
     Balance {
-        /// Volume balance (-100 to +100)
+        /// Volume balance from -100 (left) to +100 (right)
         #[arg(value_parser=parse_balance)]
         value: i32,
     },
