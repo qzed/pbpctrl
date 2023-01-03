@@ -99,9 +99,9 @@ pub enum GetSetting {
 pub enum SetSetting {
     /// Enable/disable automatic over-the-air updates
     ///
-    /// Note: Updates are initiated by the app on your phone. This flag
-    /// controls whether updates can be done automatically when the device is
-    /// not in use.
+    /// Note: Updates are initiated by the Google Buds app on your phone. This
+    /// flag controls whether updates can be done automatically when the device
+    /// is not in use.
     AutoOta {
         /// Whether to enable or disable automatic over-the-air (OTA) updates
         #[arg(action=clap::ArgAction::Set)]
@@ -136,6 +136,9 @@ pub enum SetSetting {
     },
 
     /// Enable/disable diagnostics
+    ///
+    /// Note: This will also cause the Google Buds app on your phone to send
+    /// diagnostics data to Google.
     Diagnostics {
         /// Whether to enable or disable diagnostics
         #[arg(action=clap::ArgAction::Set)]
