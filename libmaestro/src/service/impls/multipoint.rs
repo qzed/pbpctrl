@@ -21,7 +21,7 @@ impl MultipointService {
         }
     }
 
-    pub async fn subscribe_to_quiet_mode_status(&mut self) -> Result<StreamResponse<QuietModeStatusEvent>, Error> {
+    pub fn subscribe_to_quiet_mode_status(&mut self) -> Result<StreamResponse<QuietModeStatusEvent>, Error> {
         self.rpc_sub_quiet_mode_status.call(&mut self.client, self.channel_id, 0, ())
     }
 
