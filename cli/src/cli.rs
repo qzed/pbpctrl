@@ -63,6 +63,9 @@ pub enum GetSetting {
     /// Get diagnostics state (enabled/disabled)
     Diagnostics,
 
+    /// Get out-of-box-experience mode state (enabled/disabled)
+    OobeMode,
+
     /// Get hold-gesture action
     GestureControl,
 
@@ -104,6 +107,16 @@ pub enum SetSetting {
     /// Enable/disable diagnostics
     Diagnostics {
         /// Whether to enable or disable diagnostics
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
+    /// Enable/disable out-of-box-experience mode
+    ///
+    /// Note: You normally do not want to enable this mode. It is used to
+    /// intercept and block touch gestures during the setup wizard.
+    OobeMode {
+        /// Whether to enable or disable the out-of-box experience mode
         #[arg(action=clap::ArgAction::Set)]
         value: bool,
     },

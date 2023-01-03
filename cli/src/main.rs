@@ -64,6 +64,9 @@ async fn main() -> Result<()> {
             GetSetting::Diagnostics => {
                 run(client, cmd_get_setting(handle, channel, settings::id::DiagnosticsEnable)).await
             }
+            GetSetting::OobeMode => {
+                run(client, cmd_get_setting(handle, channel, settings::id::OobeMode)).await
+            },
             GetSetting::GestureControl => {
                 run(client, cmd_get_setting(handle, channel, settings::id::GestureControl)).await
             },
@@ -97,6 +100,10 @@ async fn main() -> Result<()> {
             },
             SetSetting::Diagnostics { value } => {
                 let value = SettingValue::DiagnosticsEnable(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
+            SetSetting::OobeMode { value } => {
+                let value = SettingValue::OobeMode(value);
                 run(client, cmd_set_setting(handle, channel, value)).await
             },
             SetSetting::GestureControl { left, right } => {
