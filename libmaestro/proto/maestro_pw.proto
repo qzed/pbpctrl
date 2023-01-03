@@ -178,7 +178,27 @@ message EqBands {
 }
 
 message OobeActionRsp {
-    int32 unknown1 = 1;         // something realted to in-ear detection sensors
+    OobeAction action = 1;
+}
+
+enum OobeAction {
+    OOBE_ACTION_UNKNOWN = 0;
+    OOBE_ACTION_SINGLE_TAP = 1;
+    OOBE_ACTION_DOUBLE_TAP = 2;
+    OOBE_ACTION_TRIPLE_TAP = 3;
+    OOBE_ACTION_HOLD = 4;
+    OOBE_ACTION_SWIPE_FORWARD = 5;
+    OOBE_ACTION_SWIPE_BACKWARD = 6;
+    OOBE_ACTION_SWIPE_UP = 7;
+    OOBE_ACTION_SWIPE_DOWN = 8;
+    OOBE_ACTION_HOTWORD = 9;
+    OOBE_ACTION_LEFT_ON_HEAD = 10;
+    OOBE_ACTION_LEFT_OFF_HEAD = 11;
+    OOBE_ACTION_RIGHT_ON_HEAD = 12;
+    OOBE_ACTION_RIGHT_OFF_HEAD = 13;
+    OOBE_ACTION_SPECULATIVE_TAP = 14;
+    OOBE_ACTION_HOLD_END = 15;
+    OOBE_ACTION_HOLD_CANCEL = 16;
 }
 
 service Maestro {
