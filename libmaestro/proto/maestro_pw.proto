@@ -55,7 +55,13 @@ message BatteryInfo {
 
 message DeviceBatteryInfo {
     int32 level = 1;            // battery level in percent
-    int32 state = 2;            // not charging: 1, charging: 2
+    BatteryState state = 2;
+}
+
+enum BatteryState {
+    BATTERY_STATE_UNKNOWN = 0;
+    BATTERY_NOT_CHARGING = 1;
+    BATTERY_CHARGING = 2;
 }
 
 message PlacementInfo {
