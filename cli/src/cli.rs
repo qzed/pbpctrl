@@ -54,6 +54,9 @@ pub enum ShowCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum GetSetting {
+    /// Get on-head-detection state (enabled/disabled)
+    Ohd,
+
     /// Get gesture state (enabled/disabled)
     Gestures,
 
@@ -84,6 +87,13 @@ pub enum GetSetting {
 
 #[derive(Debug, Subcommand)]
 pub enum SetSetting {
+    /// Enable/disable on-head detection
+    Ohd {
+        /// Whether to enable or disable on-head detection
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
     /// Enable/disable gestures
     Gestures {
         /// Whether to enable or disable gestures

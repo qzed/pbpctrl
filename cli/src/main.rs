@@ -55,6 +55,9 @@ async fn main() -> Result<()> {
             ShowCommand::Battery => run(client, cmd_show_battery(handle, channel)).await,
         },
         Command::Get { setting } => match setting {
+            GetSetting::Ohd => {
+                run(client, cmd_get_setting(handle, channel, settings::id::OhdEnable)).await
+            },
             GetSetting::Gestures => {
                 run(client, cmd_get_setting(handle, channel, settings::id::GestureEnable)).await
             },
@@ -84,6 +87,10 @@ async fn main() -> Result<()> {
             },
         },
         Command::Set { setting } => match setting {
+            SetSetting::Ohd { value } => {
+                let value = SettingValue::OhdEnable(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
             SetSetting::Gestures { value } => {
                 let value = SettingValue::GestureEnable(value);
                 run(client, cmd_set_setting(handle, channel, value)).await
