@@ -54,6 +54,9 @@ pub enum ShowCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum GetSetting {
+    /// Get automatic over-the-air update status
+    AutoOta,
+
     /// Get on-head-detection state (enabled/disabled)
     Ohd,
 
@@ -94,6 +97,17 @@ pub enum GetSetting {
 
 #[derive(Debug, Subcommand)]
 pub enum SetSetting {
+    /// Enable/disable automatic over-the-air updates
+    ///
+    /// Note: Updates are initiated by the app on your phone. This flag
+    /// controls whether updates can be done automatically when the device is
+    /// not in use.
+    AutoOta {
+        /// Whether to enable or disable automatic over-the-air (OTA) updates
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
     /// Enable/disable on-head detection
     Ohd {
         /// Whether to enable or disable on-head detection
