@@ -57,6 +57,10 @@ pub enum GetSetting {
     /// Get on-head-detection state (enabled/disabled)
     Ohd,
 
+    /// Get the flag indicating whether the out-of-box experience phase is
+    /// finished
+    OobeIsFinished,
+
     /// Get gesture state (enabled/disabled)
     Gestures,
 
@@ -93,6 +97,19 @@ pub enum SetSetting {
     /// Enable/disable on-head detection
     Ohd {
         /// Whether to enable or disable on-head detection
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
+    /// Set the flag indicating whether the out-of-box experience phase is
+    /// finished
+    ///
+    /// Note: You normally do not want to change this flag. It is used to
+    /// indicate whether the out-of-box experience (OOBE) phase has been
+    /// concluded, i.e., the setup wizard has been run and the device has been
+    /// set up.
+    OobeIsFinished {
+        /// Whether the OOBE setup has been finished
         #[arg(action=clap::ArgAction::Set)]
         value: bool,
     },
