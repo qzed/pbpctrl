@@ -114,7 +114,7 @@ message SettingValue {
         bool oobe_is_finished = 3;              // out-of-box experience?
         bool gesture_enable = 4;
         bool diagnostics_enable = 5;
-        int32 oobe_mode = 6;                    // might be bool
+        bool oobe_mode = 6;
         GestureControl gesture_control = 7;
         // reading anc_accessibility_mode returns non-zero status (code: 2)
         // reading ancr_state_one_bud returns non-zero status (code: 2)

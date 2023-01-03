@@ -37,7 +37,7 @@ pub enum SettingValue {
     OobeIsFinished(bool),
     GestureEnable(bool),
     DiagnosticsEnable(bool),
-    OobeMode(i32),
+    OobeMode(bool),
     GestureControl(GestureControl),
     MultipointEnable(bool),
     AncrGestureLoop(AncrGestureLoop),
@@ -601,7 +601,7 @@ pub mod id {
     }
 
     impl Setting for OobeMode {
-        type Type = i32;
+        type Type = bool;
 
         fn id(&self) -> SettingId {
             SettingId::OobeMode
