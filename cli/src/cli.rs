@@ -190,7 +190,7 @@ pub enum SetSetting {
 
     /// Set adaptive noise-cancelling state
     Anc {
-        /// ANC state
+        /// New ANC state or action to change state
         #[arg(value_enum)]
         value: AncState,
     },
@@ -238,16 +238,8 @@ pub enum AncState {
     Off,
     Active,
     Aware,
-}
-
-impl From<AncState> for settings::AncState {
-    fn from(value: AncState) -> Self {
-        match value {
-            AncState::Off => settings::AncState::Off,
-            AncState::Active => settings::AncState::Active,
-            AncState::Aware => settings::AncState::Aware,
-        }
-    }
+    CycleNext,
+    CyclePrev,
 }
 
 #[derive(Debug, ValueEnum, Clone, Copy)]

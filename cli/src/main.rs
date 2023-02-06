@@ -147,8 +147,26 @@ async fn main() -> Result<()> {
                 run(client, cmd_set_setting(handle, channel, value)).await
             },
             SetSetting::Anc { value } => {
-                let value = SettingValue::CurrentAncrState(value.into());
-                run(client, cmd_set_setting(handle, channel, value)).await
+                match value {
+                    AncState::Off => {
+                        let value = SettingValue::CurrentAncrState(settings::AncState::Off);
+                        run(client, cmd_set_setting(handle, channel, value)).await
+                    },
+                    AncState::Aware => {
+                        let value = SettingValue::CurrentAncrState(settings::AncState::Aware);
+                        run(client, cmd_set_setting(handle, channel, value)).await
+                    },
+                    AncState::Active => {
+                        let value = SettingValue::CurrentAncrState(settings::AncState::Active);
+                        run(client, cmd_set_setting(handle, channel, value)).await
+                    },
+                    AncState::CycleNext => {
+                        run(client, cmd_anc_cycle(handle, channel, true)).await
+                    },
+                    AncState::CyclePrev => {
+                        run(client, cmd_anc_cycle(handle, channel, false)).await
+                    },
+                }
             },
             SetSetting::VolumeEq { value } => {
                 let value = SettingValue::VolumeEqEnable(value);
@@ -395,6 +413,41 @@ async fn cmd_set_setting(handle: ClientHandle, channel: u32, setting: SettingVal
     let mut service = MaestroService::new(handle, channel);
 
     service.write_setting(setting).await?;
+    Ok(())
+}
+
+async fn cmd_anc_cycle(handle: ClientHandle, channel: u32, forward: bool) -> Result<()> {
+    let mut service = MaestroService::new(handle, channel);
+
+    let enabled = service.read_setting(settings::id::AncrGestureLoop).await?;
+    let state = service.read_setting(settings::id::CurrentAncrState).await?;
+
+    if let settings::AncState::Unknown(x) = state {
+        anyhow::bail!("unknown ANC state: {x}");
+    }
+
+    let states = [
+        (settings::AncState::Active, enabled.active),
+        (settings::AncState::Off, enabled.off),
+        (settings::AncState::Aware, enabled.aware),
+    ];
+
+    let index = states.iter().position(|(s, _)| *s == state).unwrap();
+
+    for offs in 1..states.len() {
+        let next = if forward {
+            index + offs
+        } else {
+            index + states.len() - offs
+        } % states.len();
+
+        let (state, enabled) = states[next];
+        if enabled {
+            service.write_setting(SettingValue::CurrentAncrState(state)).await?;
+            break;
+        }
+    }
+
     Ok(())
 }
 
