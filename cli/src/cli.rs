@@ -266,7 +266,7 @@ impl From<HoldGestureAction> for settings::RegularActionTarget {
 }
 
 fn parse_eq_value(s: &str) -> std::result::Result<f32, String> {
-    let val = s.parse().map_err(|e| format!("{}", e))?;
+    let val = s.parse().map_err(|e| format!("{e}"))?;
 
     if val > settings::EqBands::MAX_VALUE {
         Err(format!("exceeds maximum of {}", settings::EqBands::MAX_VALUE))
@@ -278,7 +278,7 @@ fn parse_eq_value(s: &str) -> std::result::Result<f32, String> {
 }
 
 fn parse_balance(s: &str) -> std::result::Result<i32, String> {
-    let val = s.parse().map_err(|e| format!("{}", e))?;
+    let val = s.parse().map_err(|e| format!("{e}"))?;
 
     if val > 100 {
         Err("exceeds maximum of 100".to_string())

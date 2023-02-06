@@ -49,10 +49,7 @@ impl Decoder for Codec {
         if length > MAX_FRAME_SIZE {
             Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!(
-                    "Frame of length {} is too large (group: {}, code: {}).",
-                    length, group, code
-                ),
+                format!("Frame of length {length} is too large (group: {group}, code: {code})."),
             ))?;
         }
 
@@ -83,7 +80,7 @@ impl Encoder<&Message> for Codec {
         if size > MAX_FRAME_SIZE as usize {
             Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("Frame of length {} is too large.", size),
+                format!("Frame of length {size} is too large."),
             ))?;
         }
 

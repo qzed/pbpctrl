@@ -216,7 +216,7 @@ impl std::fmt::Display for RegularActionTarget {
             RegularActionTarget::PlayPauseTrack => write!(f, "play-pause"),
             RegularActionTarget::AncControl => write!(f, "anc"),
             RegularActionTarget::AssistantQuery => write!(f, "assistant"),
-            RegularActionTarget::Unknown(x) => write!(f, "unknown ({})", x),
+            RegularActionTarget::Unknown(x) => write!(f, "unknown ({x})"),
         }
     }
 }
@@ -307,6 +307,8 @@ impl AncState {
     }
 }
 
+// #[derive(Default)] clashes with #[derive(FromPrimitive)]
+#[allow(clippy::derivable_impls)]
 impl Default for AncState {
     fn default() -> Self {
         AncState::Off
@@ -319,7 +321,7 @@ impl std::fmt::Display for AncState {
             AncState::Off => write!(f, "off"),
             AncState::Active => write!(f, "active"),
             AncState::Aware => write!(f, "aware"),
-            AncState::Unknown(x) => write!(f, "unknown ({})", x),
+            AncState::Unknown(x) => write!(f, "unknown ({x})"),
         }
     }
 }
@@ -482,7 +484,7 @@ impl std::fmt::Display for VolumeAsymmetry {
         let left = (100 - self.value).min(100);
         let right = (100 + self.value).min(100);
 
-        write!(f, "left: {}%, right: {}%", left, right)
+        write!(f, "left: {left}%, right: {right}%")
     }
 }
 

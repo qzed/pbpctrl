@@ -204,9 +204,9 @@ async fn cmd_show_software(handle: ClientHandle, channel: u32) -> Result<()> {
         .unwrap_or("unknown");
 
     println!("firmware:");
-    println!("  case:      {} ({})", fw_ver_case,  fw_unk_case);
-    println!("  left bud:  {} ({})", fw_ver_left,  fw_unk_left);
-    println!("  right bud: {} ({})", fw_ver_right, fw_unk_right);
+    println!("  case:      {fw_ver_case} ({fw_unk_case})");
+    println!("  left bud:  {fw_ver_left} ({fw_unk_left})");
+    println!("  right bud: {fw_ver_right} ({fw_unk_right})");
 
     Ok(())
 }
@@ -229,9 +229,9 @@ async fn cmd_show_hardware(handle: ClientHandle, channel: u32) -> Result<()> {
         .unwrap_or("unknown");
 
     println!("serial numbers:");
-    println!("  case:      {}", serial_case);
-    println!("  left bud:  {}", serial_left);
-    println!("  right bud: {}", serial_right);
+    println!("  case:      {serial_case}");
+    println!("  left bud:  {serial_left}");
+    println!("  right bud: {serial_right}");
 
     Ok(())
 }
@@ -284,25 +284,25 @@ async fn cmd_show_runtime(handle: ClientHandle, channel: u32) -> Result<()> {
 
     println!("battery:");
     if let Some(lvl) = bat_level_case {
-        println!("  case:      {}% ({})", lvl, bat_state_case);
+        println!("  case:      {lvl}% ({bat_state_case})");
     } else {
         println!("  case:      unknown");
     }
     if let Some(lvl) = bat_level_left {
-        println!("  left bud:  {}% ({})", lvl, bat_state_left);
+        println!("  left bud:  {lvl}% ({bat_state_left})");
     } else {
         println!("  left bud:  unknown");
     }
     if let Some(lvl) = bat_level_right {
-        println!("  right bud: {}% ({})", lvl, bat_state_right);
+        println!("  right bud: {lvl}% ({bat_state_right})");
     } else {
         println!("  right bud: unknown");
     }
     println!();
 
     println!("placement:");
-    println!("  left bud:  {}", place_left);
-    println!("  right bud: {}", place_right);
+    println!("  left bud:  {place_left}");
+    println!("  right bud: {place_right}");
 
     let address = addr::address_for_channel(channel);
     let peer_local = address.map(|a| a.source());
@@ -311,12 +311,12 @@ async fn cmd_show_runtime(handle: ClientHandle, channel: u32) -> Result<()> {
     println!();
     println!("connection:");
     if let Some(peer) = peer_local {
-        println!("  local:  {:?}", peer);
+        println!("  local:  {peer:?}");
     } else {
         println!("  local:  unknown");
     }
     if let Some(peer) = peer_remote {
-        println!("  remote: {:?}", peer);
+        println!("  remote: {peer:?}");
     } else {
         println!("  remote: unknown");
     }
@@ -360,17 +360,17 @@ async fn cmd_show_battery(handle: ClientHandle, channel: u32) -> Result<()> {
         .unwrap_or("unknown");
 
     if let Some(lvl) = bat_level_case {
-        println!("case:      {}% ({})", lvl, bat_state_case);
+        println!("case:      {lvl}% ({bat_state_case})");
     } else {
         println!("case:      unknown");
     }
     if let Some(lvl) = bat_level_left {
-        println!("left bud:  {}% ({})", lvl, bat_state_left);
+        println!("left bud:  {lvl}% ({bat_state_left})");
     } else {
         println!("left bud:  unknown");
     }
     if let Some(lvl) = bat_level_right {
-        println!("right bud: {}% ({})", lvl, bat_state_right);
+        println!("right bud: {lvl}% ({bat_state_right})");
     } else {
         println!("right bud: unknown");
     }
@@ -386,7 +386,7 @@ where
     let mut service = MaestroService::new(handle, channel);
 
     let value = service.read_setting(setting).await?;
-    println!("{}", value);
+    println!("{value}");
 
     Ok(())
 }
