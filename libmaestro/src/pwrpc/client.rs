@@ -171,25 +171,25 @@ where
         );
 
         let ty = packet.r#type;
-        let ty = PacketType::from_i32(ty);
+        let ty = PacketType::try_from(ty);
 
         match ty {
-            Some(PacketType::Response) => {
+            Ok(PacketType::Response) => {
                 self.rpc_complete(packet).await
             },
-            Some(PacketType::ServerError) => {
+            Ok(PacketType::ServerError) => {
                 self.rpc_complete_with_error(packet).await
             },
-            Some(PacketType::ServerStream) => {
+            Ok(PacketType::ServerStream) => {
                 self.rpc_stream_push(packet).await?
             },
-            Some(_) => {
+            Ok(_) => {
                 tracing::error!(
                     "unsupported packet type: type=0x{:02x}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.r#type, packet.channel_id, packet.service_id, packet.method_id, packet.call_id
                 );
             },
-            None => {
+            Err(_) => {
                 tracing::error!(
                     "unknown packet type: type=0x{:02x}, channel_id=0x{:02x}, service_id=0x{:08x}, method_id=0x{:08x}, call_id=0x{:02x}",
                     packet.r#type, packet.channel_id, packet.service_id, packet.method_id, packet.call_id
