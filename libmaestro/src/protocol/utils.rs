@@ -62,7 +62,7 @@ async fn try_open_channel(mut handle: ClientHandle, channel_id: u32) -> Result<u
         channel_id,
         service_id,
         method_id,
-        call_id: 0,
+        call_id: 0xffffffff,
         message: (),
     };
 
