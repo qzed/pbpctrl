@@ -674,7 +674,7 @@ impl CallHandle {
                 Some(CallUpdate::Complete { .. }) => {
                     return Ok(())
                 },
-                Some(CallUpdate::Error { status }) if status == Status::Cancelled => {
+                Some(CallUpdate::Error { status: Status::Cancelled }) => {
                     return Ok(())
                 },
                 Some(CallUpdate::Error { status }) => {
