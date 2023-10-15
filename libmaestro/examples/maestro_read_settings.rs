@@ -138,6 +138,9 @@ async fn read_settings(handle: ClientHandle, channel: u32) -> anyhow::Result<()>
     let value = service.read_setting(settings::id::VolumeExposureNotifications).await?;
     println!("  Volume level exposure notifications: {}", value);
 
+    let value = service.read_setting(settings::id::SpeechDetection).await?;
+    println!("  Speech detection:                    {}", value);
+
     // read settings via variant
     println!();
     println!("Read via variants:");

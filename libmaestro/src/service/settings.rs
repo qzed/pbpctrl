@@ -26,6 +26,7 @@ pub enum SettingId {
     LastSavedUserEq = 18,
     SumToMono = 19,
     VolumeExposureNotifications = 21,
+    SpeechDetection = 22,
 
     #[num_enum(catch_all)]
     Unknown(i32),
@@ -50,6 +51,7 @@ pub enum SettingValue {
     VolumeAsymmetry(VolumeAsymmetry),
     SumToMono(bool),
     VolumeExposureNotifications(bool),
+    SpeechDetection(bool),
 }
 
 impl SettingValue {
@@ -71,6 +73,7 @@ impl SettingValue {
             SettingValue::VolumeAsymmetry(_) => SettingId::VolumeAsymmetry,
             SettingValue::SumToMono(_) => SettingId::SumToMono,
             SettingValue::VolumeExposureNotifications(_) => SettingId::VolumeExposureNotifications,
+            SettingValue::SpeechDetection(_) => SettingId::SpeechDetection,
         }
     }
 }
@@ -96,6 +99,7 @@ impl From<types::setting_value::ValueOneof> for SettingValue {
             ValueOneof::VolumeAsymmetry(x) => SettingValue::VolumeAsymmetry(VolumeAsymmetry::from_raw(x)),
             ValueOneof::SumToMono(x) => SettingValue::SumToMono(x),
             ValueOneof::VolumeExposureNotifications(x) => SettingValue::VolumeExposureNotifications(x),
+            ValueOneof::SpeechDetection(x) => SettingValue::SpeechDetection(x),
         }
     }
 }
@@ -121,6 +125,7 @@ impl From<SettingValue> for types::setting_value::ValueOneof {
             SettingValue::VolumeAsymmetry(x) => ValueOneof::VolumeAsymmetry(x.raw()),
             SettingValue::SumToMono(x) => ValueOneof::SumToMono(x),
             SettingValue::VolumeExposureNotifications(x) => ValueOneof::VolumeExposureNotifications(x),
+            SettingValue::SpeechDetection(x) => ValueOneof::SpeechDetection(x),
         }
     }
 }
@@ -538,6 +543,7 @@ pub mod id {
     pub struct VolumeAsymmetry;
     pub struct SumToMono;
     pub struct VolumeExposureNotifications;
+    pub struct SpeechDetection;
 
     impl Setting for AutoOtaEnable {
         type Type = bool;
@@ -774,6 +780,21 @@ pub mod id {
         fn from_var(var: SettingValue) -> Option<Self::Type> {
             match var {
                 SettingValue::VolumeExposureNotifications(x) => Some(x),
+                _ => None,
+            }
+        }
+    }
+
+    impl Setting for SpeechDetection {
+        type Type = bool;
+
+        fn id(&self) -> SettingId {
+            SettingId::SpeechDetection
+        }
+
+        fn from_var(var: SettingValue) -> Option<Self::Type> {
+            match var {
+                SettingValue::SpeechDetection(x) => Some(x),
                 _ => None,
             }
         }
