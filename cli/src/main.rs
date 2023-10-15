@@ -94,6 +94,15 @@ async fn main() -> Result<()> {
             GetSetting::Balance => {
                 run(client, cmd_get_setting(handle, channel, settings::id::VolumeAsymmetry)).await
             },
+            GetSetting::Mono => {
+                run(client, cmd_get_setting(handle, channel, settings::id::SumToMono)).await
+            },
+            GetSetting::VolumeExposureNotifications => {
+                run(client, cmd_get_setting(handle, channel, settings::id::VolumeExposureNotifications)).await
+            },
+            GetSetting::SpeechDetection => {
+                run(client, cmd_get_setting(handle, channel, settings::id::SpeechDetection)).await
+            },
         },
         Command::Set { setting } => match setting {
             SetSetting::AutoOta { value } => {
@@ -181,7 +190,19 @@ async fn main() -> Result<()> {
                 let value = settings::VolumeAsymmetry::from_normalized(value);
                 let value = SettingValue::VolumeAsymmetry(value);
                 run(client, cmd_set_setting(handle, channel, value)).await
-            }
+            },
+            SetSetting::Mono { value } => {
+                let value = SettingValue::SumToMono(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
+            SetSetting::VolumeExposureNotifications { value } => {
+                let value = SettingValue::VolumeExposureNotifications(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
+            SetSetting::SpeechDetection { value } => {
+                let value = SettingValue::SpeechDetection(value);
+                run(client, cmd_set_setting(handle, channel, value)).await
+            },
         },
     }
 }

@@ -93,6 +93,15 @@ pub enum GetSetting {
 
     /// Get volume balance
     Balance,
+
+    /// Get mono output state
+    Mono,
+
+    /// Get volume exposure notifications state (enabled/disabled)
+    VolumeExposureNotifications,
+
+    /// Get automatic transparency mode state (enabled/disabled)
+    SpeechDetection,
 }
 
 #[derive(Debug, Subcommand)]
@@ -230,6 +239,27 @@ pub enum SetSetting {
         /// Volume balance from -100 (left) to +100 (right)
         #[arg(value_parser=parse_balance)]
         value: i32,
+    },
+
+    /// Set mono output
+    Mono {
+        /// Whether to force mono output
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
+    /// Enable/disable volume level exposure notifications
+    VolumeExposureNotifications {
+        /// Whether to enable or disable volume level exposure notifications
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
+    },
+
+    /// Enable/disable automatic transparency mode via speech detection
+    SpeechDetection {
+        /// Whether to enable or disable the automatic transparency mode via speech detection
+        #[arg(action=clap::ArgAction::Set)]
+        value: bool,
     },
 }
 
