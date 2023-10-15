@@ -133,6 +133,7 @@ message SettingValue {
         EqBands current_user_eq = 16;
         int32 volume_asymmetry = 17;            // value goes from 0 t0 200 (incl.), even/odd indicates left/right
         // reading last_saved_user_eq returns non-zero status (code: 2)
+        bool sum_to_mono = 19;
     }
 }
 

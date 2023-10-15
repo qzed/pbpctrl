@@ -132,6 +132,9 @@ async fn read_settings(handle: ClientHandle, channel: u32) -> anyhow::Result<()>
     let value = service.read_setting(settings::id::VolumeAsymmetry).await?;
     println!("  Volume balance/asymmetry: {}", value);
 
+    let value = service.read_setting(settings::id::SumToMono).await?;
+    println!("  Mono output:              {}", value);
+
     // read settings via variant
     println!();
     println!("Read via variants:");
