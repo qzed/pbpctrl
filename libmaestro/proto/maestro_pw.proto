@@ -262,3 +262,14 @@ service EartipFitTest {
     rpc EndTest(StartEartipFitTestMsg) returns (google.protobuf.Empty) {}
     rpc SubscribeToResults(SubscribeToEartipFitTestResultsMsg) returns (stream EartipFitTestResult) {}
 }
+
+
+/* -- JitterBuffer Service ---------------------------------------------------------------------- */
+
+message SetJitterBufferSizePreferenceMsg {
+    // TODO
+}
+
+service JitterBuffer {
+    rpc SetJitterBufferSizePreference(SetJitterBufferSizePreferenceMsg) returns (google.protobuf.Empty) {}
+}
