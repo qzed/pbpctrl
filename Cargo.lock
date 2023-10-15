@@ -536,7 +536,7 @@ checksum = "baee0bbc17ce759db233beb01648088061bf678383130602a298e6998eedb2d8"
 
 [[package]]
 name = "maestro"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "arrayvec",
