@@ -273,3 +273,27 @@ message SetJitterBufferSizePreferenceMsg {
 service JitterBuffer {
     rpc SetJitterBufferSizePreference(SetJitterBufferSizePreferenceMsg) returns (google.protobuf.Empty) {}
 }
+
+
+/* -- Dosimeter Service ------------------------------------------------------------------------- */
+
+message DosimeterSummaryEntry {
+    int32 unknown1 = 1;
+    float unknown6 = 6;
+}
+
+message DosimeterSummary {
+    int32 unknown1 = 1;
+    repeated DosimeterSummaryEntry unknown2 = 2;
+    int32 unknown4 = 4;
+    float unknown5 = 5;
+}
+
+message DosimeterLiveDbMsg {
+    float intensity = 2;        // convert to dB via log10(x) * 10
+}
+
+service Dosimeter {
+    rpc FetchDailySummaries(google.protobuf.Empty) returns (DosimeterSummary) {}
+    rpc SubscribeToLiveDb(google.protobuf.Empty) returns (DosimeterLiveDbMsg) {}
+}

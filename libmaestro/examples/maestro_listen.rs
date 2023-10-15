@@ -13,7 +13,7 @@ use futures::StreamExt;
 use maestro::protocol::codec::Codec;
 use maestro::protocol::utils;
 use maestro::pwrpc::client::{Client, ClientHandle};
-use maestro::service::MaestroService;
+use maestro::service::{MaestroService, DosimeterService};
 
 
 #[tokio::main(flavor = "current_thread")]
@@ -120,9 +120,13 @@ async fn run_listener(handle: ClientHandle, channel: u32) -> anyhow::Result<()> 
     println!("Sending GetSoftwareInfo request");
     println!();
 
-    let mut service = MaestroService::new(handle, channel);
+    let mut service = MaestroService::new(handle.clone(), channel);
+    let mut dosimeter = DosimeterService::new(handle, channel);
 
     let info = service.get_software_info().await?;
+    println!("{:#?}", info);
+
+    let info = dosimeter.fetch_daily_summaries().await?;
     println!("{:#?}", info);
 
     println!();
@@ -131,10 +135,12 @@ async fn run_listener(handle: ClientHandle, channel: u32) -> anyhow::Result<()> 
 
     let task_rtinfo = run_listener_rtinfo(service.clone());
     let task_settings = run_listener_settings(service.clone());
+    let task_dosimeter = run_listener_dosimeter(dosimeter.clone());
 
     tokio::select! {
         res = task_rtinfo => res,
         res = task_settings => res,
+        res = task_dosimeter => res,
     }
 }
 
@@ -151,6 +157,15 @@ async fn run_listener_settings(mut service: MaestroService) -> anyhow::Result<()
     let mut call = service.subscribe_to_settings_changes()?;
     while let Some(msg) = call.stream().next().await {
         println!("{:#?}", msg?);
+    }
+
+    Ok(())
+}
+
+async fn run_listener_dosimeter(mut service: DosimeterService) -> anyhow::Result<()> {
+    let mut call = service.subscribe_to_live_db()?;
+    while let Some(msg) = call.stream().next().await {
+        println!("volume: {:#?} dB", (msg.unwrap().intensity.log10() * 10.0).round());
     }
 
     Ok(())
