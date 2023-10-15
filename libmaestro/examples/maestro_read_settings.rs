@@ -91,49 +91,52 @@ async fn read_settings(handle: ClientHandle, channel: u32) -> anyhow::Result<()>
 
     // read some typed settings via proxy structs
     let value = service.read_setting(settings::id::AutoOtaEnable).await?;
-    println!("  Auto-OTA enabled:         {}", value);
+    println!("  Auto-OTA enabled:                    {}", value);
 
     let value = service.read_setting(settings::id::OhdEnable).await?;
-    println!("  OHD enabled:              {}", value);
+    println!("  OHD enabled:                         {}", value);
 
     let value = service.read_setting(settings::id::OobeIsFinished).await?;
-    println!("  OOBE finished:            {}", value);
+    println!("  OOBE finished:                       {}", value);
 
     let value = service.read_setting(settings::id::GestureEnable).await?;
-    println!("  Gestures enabled:         {}", value);
+    println!("  Gestures enabled:                    {}", value);
 
     let value = service.read_setting(settings::id::DiagnosticsEnable).await?;
-    println!("  Diagnostics enabled:      {}", value);
+    println!("  Diagnostics enabled:                 {}", value);
 
     let value = service.read_setting(settings::id::OobeMode).await?;
-    println!("  OOBE mode:                {}", value);
+    println!("  OOBE mode:                           {}", value);
 
     let value = service.read_setting(settings::id::GestureControl).await?;
-    println!("  Gesture control:          {}", value);
+    println!("  Gesture control:                     {}", value);
 
     let value = service.read_setting(settings::id::MultipointEnable).await?;
-    println!("  Multi-point enabled:      {}", value);
+    println!("  Multi-point enabled:                 {}", value);
 
     let value = service.read_setting(settings::id::AncrGestureLoop).await?;
-    println!("  ANCR gesture loop:        {}", value);
+    println!("  ANCR gesture loop:                   {}", value);
 
     let value = service.read_setting(settings::id::CurrentAncrState).await?;
-    println!("  ANC status:               {}", value);
+    println!("  ANC status:                          {}", value);
 
     let value = service.read_setting(settings::id::OttsMode).await?;
-    println!("  OTTS mode:                {}", value);
+    println!("  OTTS mode:                           {}", value);
 
     let value = service.read_setting(settings::id::VolumeEqEnable).await?;
-    println!("  Volume-EQ enabled:        {}", value);
+    println!("  Volume-EQ enabled:                   {}", value);
 
     let value = service.read_setting(settings::id::CurrentUserEq).await?;
-    println!("  Current user EQ:          {}", value);
+    println!("  Current user EQ:                     {}", value);
 
     let value = service.read_setting(settings::id::VolumeAsymmetry).await?;
-    println!("  Volume balance/asymmetry: {}", value);
+    println!("  Volume balance/asymmetry:            {}", value);
 
     let value = service.read_setting(settings::id::SumToMono).await?;
-    println!("  Mono output:              {}", value);
+    println!("  Mono output:                         {}", value);
+
+    let value = service.read_setting(settings::id::VolumeExposureNotifications).await?;
+    println!("  Volume level exposure notifications: {}", value);
 
     // read settings via variant
     println!();

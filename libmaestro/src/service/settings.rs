@@ -25,6 +25,7 @@ pub enum SettingId {
     VolumeAsymmetry = 17,
     LastSavedUserEq = 18,
     SumToMono = 19,
+    VolumeExposureNotifications = 21,
 
     #[num_enum(catch_all)]
     Unknown(i32),
@@ -48,6 +49,7 @@ pub enum SettingValue {
     CurrentUserEq(EqBands),
     VolumeAsymmetry(VolumeAsymmetry),
     SumToMono(bool),
+    VolumeExposureNotifications(bool),
 }
 
 impl SettingValue {
@@ -68,6 +70,7 @@ impl SettingValue {
             SettingValue::CurrentUserEq(_) => SettingId::CurrentUserEq,
             SettingValue::VolumeAsymmetry(_) => SettingId::VolumeAsymmetry,
             SettingValue::SumToMono(_) => SettingId::SumToMono,
+            SettingValue::VolumeExposureNotifications(_) => SettingId::VolumeExposureNotifications,
         }
     }
 }
@@ -92,6 +95,7 @@ impl From<types::setting_value::ValueOneof> for SettingValue {
             ValueOneof::CurrentUserEq(x) => SettingValue::CurrentUserEq(EqBands::from(x)),
             ValueOneof::VolumeAsymmetry(x) => SettingValue::VolumeAsymmetry(VolumeAsymmetry::from_raw(x)),
             ValueOneof::SumToMono(x) => SettingValue::SumToMono(x),
+            ValueOneof::VolumeExposureNotifications(x) => SettingValue::VolumeExposureNotifications(x),
         }
     }
 }
@@ -116,6 +120,7 @@ impl From<SettingValue> for types::setting_value::ValueOneof {
             SettingValue::CurrentUserEq(x) => ValueOneof::CurrentUserEq(x.into()),
             SettingValue::VolumeAsymmetry(x) => ValueOneof::VolumeAsymmetry(x.raw()),
             SettingValue::SumToMono(x) => ValueOneof::SumToMono(x),
+            SettingValue::VolumeExposureNotifications(x) => ValueOneof::VolumeExposureNotifications(x),
         }
     }
 }
@@ -532,6 +537,7 @@ pub mod id {
     pub struct CurrentUserEq;
     pub struct VolumeAsymmetry;
     pub struct SumToMono;
+    pub struct VolumeExposureNotifications;
 
     impl Setting for AutoOtaEnable {
         type Type = bool;
@@ -753,6 +759,21 @@ pub mod id {
         fn from_var(var: SettingValue) -> Option<Self::Type> {
             match var {
                 SettingValue::SumToMono(x) => Some(x),
+                _ => None,
+            }
+        }
+    }
+
+    impl Setting for VolumeExposureNotifications {
+        type Type = bool;
+
+        fn id(&self) -> SettingId {
+            SettingId::VolumeExposureNotifications
+        }
+
+        fn from_var(var: SettingValue) -> Option<Self::Type> {
+            match var {
+                SettingValue::VolumeExposureNotifications(x) => Some(x),
                 _ => None,
             }
         }
