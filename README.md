@@ -14,6 +14,11 @@ Alternatively, the [`pbpctrl-git`](https://aur.archlinux.org/packages/pbpctrl-gi
 
 ### Installation via `cargo`
 
+You will need to install the following dependencies:
+
+- Ubuntu: `libdbus-1-dev pkg-config protobuf-compiler`
+- Arch Linux: Please refer to the dependencies (`depends` and `makedepends` fields) in [this PKGBUILD](https://aur.archlinux.org/cgit/aur.git/tree/PKGBUILD?h=pbpctrl).
+
 To build install the binary via cargo, run
 ```sh
 cargo install pbpctrl --git https://github.com/qzed/pbpctrl/
