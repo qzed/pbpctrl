@@ -1,7 +1,7 @@
 [package]
 name = "maestro"
 authors = ["Maximilian Luz <m@mxnluz.io>"]
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 license = "MIT/Apache-2.0"
 description = "Maestro protocol client implementation for controlling Google Pixel Buds Pro"
