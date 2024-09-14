@@ -8,23 +8,23 @@ description = "Maestro protocol client implementation for controlling Google Pix
 repository = "https://github.com/qzed/pbpctrl"
 
 [dependencies]
-arrayvec = "0.7.4"
-bytes = "1.5.0"
-futures = "0.3.28"
-num_enum = "0.7.0"
-prost = "0.12.1"
-tokio = { version = "1.33.0", features = ["macros"] }
-tokio-util = { version = "0.7.9", features = ["codec"] }
-tracing = "0.1.39"
-uuid = "1.4.1"
+arrayvec = "0.7.6"
+bytes = "1.7.1"
+futures = "0.3.30"
+num_enum = "0.7.3"
+prost = "0.13.2"
+tokio = { version = "1.40.0", features = ["macros"] }
+tokio-util = { version = "0.7.12", features = ["codec"] }
+tracing = "0.1.40"
+uuid = "1.10.0"
 
 [build-dependencies]
-prost-build = "0.12.1"
+prost-build = "0.13.2"
 
 [dev-dependencies]
-anyhow = "1.0.75"
-bluer = { version = "0.16.1", features = ["bluetoothd", "rfcomm"] }
-futures = "0.3.28"
-pretty-hex = "0.3.0"
-tokio = { version = "1.33.0", features = ["rt", "macros", "signal"] }
-tracing-subscriber = "0.3.17"
+anyhow = "1.0.88"
+bluer = { version = "0.17.3", features = ["bluetoothd", "rfcomm"] }
+futures = "0.3.30"
+pretty-hex = "0.4.1"
+tokio = { version = "1.40.0", features = ["rt", "macros", "signal"] }
+tracing-subscriber = "0.3.18"

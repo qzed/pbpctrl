@@ -1,5 +1,7 @@
 //! Miscellaneous utilities and helpers.
 
+use bytes::{Buf, BufMut};
+
 /// An encoded protobuf message.
 ///
 /// This type represents an encoded protobuf message. Decoding and encoding are
@@ -20,33 +22,21 @@ impl std::fmt::Debug for EncodedMessage {
 }
 
 impl prost::Message for EncodedMessage {
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: bytes::BufMut,
-        Self: Sized
-    {
+    fn encode_raw(&self, buf: &mut impl BufMut) {
         buf.put_slice(&self.data[..])
     }
 
-    fn merge_field<B>(
+    fn merge_field(
         &mut self,
         _tag: u32,
         _wire_type: prost::encoding::WireType,
-        _buf: &mut B,
+        _buf: &mut impl Buf,
         _ctx: prost::encoding::DecodeContext,
-    ) -> Result<(), prost::DecodeError>
-    where
-        B: bytes::Buf,
-        Self: Sized
-    {
+    ) -> Result<(), prost::DecodeError> {
         unimplemented!("use merge() instead")
     }
 
-    fn merge<B>(&mut self, mut buf: B) -> Result<(), prost::DecodeError>
-        where
-            B: bytes::Buf,
-            Self: Sized,
-    {
+    fn merge(&mut self, mut buf: impl Buf) -> Result<(), prost::DecodeError> {
         let a = self.data.len();
         let b = a + buf.remaining();
 
