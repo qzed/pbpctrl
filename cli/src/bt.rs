@@ -9,6 +9,7 @@ use futures::StreamExt;
 
 
 const PIXEL_BUDS_CLASS: u32 = 0x240404;
+const PIXEL_BUDS2_CLASS: u32 = 0x244404;
 
 
 pub async fn find_maestro_device(adapter: &Adapter) -> Result<Device> {
@@ -16,7 +17,7 @@ pub async fn find_maestro_device(adapter: &Adapter) -> Result<Device> {
         let dev = adapter.device(addr)?;
 
         let class = dev.class().await?.unwrap_or(0);
-        if class != PIXEL_BUDS_CLASS {
+        if class != PIXEL_BUDS_CLASS && class != PIXEL_BUDS2_CLASS {
             continue;
         }
 
