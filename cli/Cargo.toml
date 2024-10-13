@@ -8,10 +8,10 @@ description = "Command-line utility for controlling Google Pixel Buds Pro"
 repository = "https://github.com/qzed/pbpctrl"
 
 [dependencies]
-anyhow = "1.0.88"
+anyhow = "1.0.89"
 bluer = { version = "0.17.3", features = ["bluetoothd", "rfcomm"] }
-clap = { version = "4.5.17", features = ["derive"] }
-futures = "0.3.30"
+clap = { version = "4.5.20", features = ["derive"] }
+futures = "0.3.31"
 maestro = { path = "../libmaestro" }
 tokio = { version = "1.40.0", features = ["rt", "macros", "signal"] }
 tracing = "0.1.40"
@@ -19,6 +19,6 @@ tracing-subscriber = "0.3.18"
 
 [build-dependencies]
 bluer = { version = "0.17.3" }
-clap = { version = "4.5.17", features = ["derive"] }
-clap_complete = "4.5.26"
+clap = { version = "4.5.20", features = ["derive"] }
+clap_complete = "4.5.33"
 maestro = { path = "../libmaestro" }
