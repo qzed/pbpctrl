@@ -38,7 +38,7 @@ impl Address {
         let source: u8 = source.into();
         let target: u8 = target.into();
 
-        Self::from_value((source as u32 & 0xf) << 6 | (target as u32 & 0xf) << 10)
+        Self::from_value(((source as u32 & 0xf) << 6) | ((target as u32 & 0xf) << 10))
     }
 
     pub fn value(&self) -> u32 {

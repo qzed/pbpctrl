@@ -801,7 +801,7 @@ pub struct ServerStream<'a, M> {
     handle: &'a mut CallHandle,
 }
 
-impl<'a, M> Stream for ServerStream<'a, M>
+impl<M> Stream for ServerStream<'_, M>
 where
     M: Message + Default,
 {
@@ -850,7 +850,7 @@ where
     }
 }
 
-impl<'a, M> FusedStream for ServerStream<'a, M>
+impl<M> FusedStream for ServerStream<'_, M>
 where
     M: Message + Default,
 {
