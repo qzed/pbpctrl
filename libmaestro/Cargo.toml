@@ -2,29 +2,29 @@
 name = "maestro"
 authors = ["Maximilian Luz <m@mxnluz.io>"]
 version = "0.1.4"
-edition = "2021"
+edition = "2024"
 license = "MIT/Apache-2.0"
 description = "Maestro protocol client implementation for controlling Google Pixel Buds Pro"
 repository = "https://github.com/qzed/pbpctrl"
 
 [dependencies]
 arrayvec = "0.7.6"
-bytes = "1.7.2"
+bytes = "1.9.0"
 futures = "0.3.31"
 num_enum = "0.7.3"
-prost = "0.13.3"
-tokio = { version = "1.40.0", features = ["macros"] }
-tokio-util = { version = "0.7.12", features = ["codec"] }
-tracing = "0.1.40"
-uuid = "1.10.0"
+prost = "0.13.4"
+tokio = { version = "1.42.0", features = ["macros"] }
+tokio-util = { version = "0.7.13", features = ["codec"] }
+tracing = "0.1.41"
+uuid = "1.11.0"
 
 [build-dependencies]
-prost-build = "0.13.3"
+prost-build = "0.13.4"
 
 [dev-dependencies]
-anyhow = "1.0.89"
+anyhow = "1.0.95"
 bluer = { version = "0.17.3", features = ["bluetoothd", "rfcomm"] }
 futures = "0.3.31"
 pretty-hex = "0.4.1"
-tokio = { version = "1.40.0", features = ["rt", "macros", "signal"] }
-tracing-subscriber = "0.3.18"
+tokio = { version = "1.42.0", features = ["rt", "macros", "signal"] }
+tracing-subscriber = "0.3.19"
