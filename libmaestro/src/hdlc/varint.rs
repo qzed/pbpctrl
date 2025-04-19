@@ -66,7 +66,7 @@ pub const fn num_bytes(value: u32) -> usize {
     if value == 0 {
         1
     } else {
-        (u32::BITS - value.leading_zeros()).div_ceil(7)
+        (u32::BITS - value.leading_zeros()).div_ceil(7) as _
     }
 }
 
