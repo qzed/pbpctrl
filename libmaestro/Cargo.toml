@@ -9,22 +9,22 @@ repository = "https://github.com/qzed/pbpctrl"
 
 [dependencies]
 arrayvec = "0.7.6"
-bytes = "1.9.0"
+bytes = "1.10.1"
 futures = "0.3.31"
 num_enum = "0.7.3"
-prost = "0.13.4"
-tokio = { version = "1.42.0", features = ["macros"] }
-tokio-util = { version = "0.7.13", features = ["codec"] }
+prost = "0.13.5"
+tokio = { version = "1.44.2", features = ["macros"] }
+tokio-util = { version = "0.7.14", features = ["codec"] }
 tracing = "0.1.41"
-uuid = "1.11.0"
+uuid = "1.16.0"
 
 [build-dependencies]
-prost-build = "0.13.4"
+prost-build = "0.13.5"
 
 [dev-dependencies]
-anyhow = "1.0.95"
+anyhow = "1.0.98"
 bluer = { version = "0.17.3", features = ["bluetoothd", "rfcomm"] }
 futures = "0.3.31"
 pretty-hex = "0.4.1"
-tokio = { version = "1.42.0", features = ["rt", "macros", "signal"] }
+tokio = { version = "1.44.2", features = ["rt", "macros", "signal"] }
 tracing-subscriber = "0.3.19"
