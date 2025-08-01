@@ -12,6 +12,10 @@ Allows reading of battery, hardware, software, and runtime information as well a
 A [`pbpctrl`](https://aur.archlinux.org/packages/pbpctrl) package is provided via the AUR.
 Alternatively, the [`pbpctrl-git`](https://aur.archlinux.org/packages/pbpctrl-git) package can be used to directly build from the latest state on the `main` branch.
 
+### Debian/Ubuntu
+
+A [`pbpctrl`](https://mpr.makedeb.org/packages/pbpctrl) package is provided via the MPR.
+
 ### Installation via `cargo`
 
 You will need to install the following dependencies:
