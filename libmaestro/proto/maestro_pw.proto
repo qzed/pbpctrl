@@ -169,6 +169,7 @@ message AncrGestureLoop {
     bool active = 1;
     bool off = 2;
     bool aware = 3;
+    bool adaptive = 4;
 }
 
 enum AncState {
@@ -176,6 +177,7 @@ enum AncState {
     ANC_STATE_OFF = 1;
     ANC_STATE_ACTIVE = 2;
     ANC_STATE_AWARE = 3;
+    ANC_STATE_ADAPTIVE = 4;
 }
 
 message EqBands {

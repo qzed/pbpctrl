@@ -195,6 +195,10 @@ pub enum SetSetting {
         /// Enable 'aware' mode in loop
         #[arg(action=clap::ArgAction::Set)]
         aware: bool,
+
+        /// Enable 'adaptive' mode in loop
+        #[arg(action=clap::ArgAction::Set)]
+        adaptive: bool,
     },
 
     /// Set adaptive noise-cancelling state
@@ -268,6 +272,7 @@ pub enum AncState {
     Off,
     Active,
     Aware,
+    Adaptive,
     CycleNext,
     CyclePrev,
 }

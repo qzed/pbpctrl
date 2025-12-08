@@ -242,18 +242,19 @@ pub struct AncrGestureLoop {
     pub active: bool,
     pub off: bool,
     pub aware: bool,
+    pub adaptive: bool,
 }
 
 impl AncrGestureLoop {
     pub fn is_valid(&self) -> bool {
         // at least two need to be set
-        (self.active as u32 + self.off as u32 + self.aware as u32) >= 2
+        (self.active as u32 + self.off as u32 + self.aware as u32 + self.adaptive as u32) >= 2
     }
 }
 
 impl From<types::AncrGestureLoop> for AncrGestureLoop {
     fn from(other: types::AncrGestureLoop) -> Self {
-        AncrGestureLoop { active: other.active, off: other.off, aware: other.aware }
+        AncrGestureLoop { active: other.active, off: other.off, aware: other.aware, adaptive: other.adaptive }
     }
 }
 
@@ -263,6 +264,7 @@ impl From<AncrGestureLoop> for types::AncrGestureLoop {
             active: other.active,
             off: other.off,
             aware: other.aware,
+            adaptive: other.adaptive,
         }
     }
 }
@@ -295,6 +297,14 @@ impl std::fmt::Display for AncrGestureLoop {
             write!(f, "aware")?;
         }
 
+        if self.adaptive {
+            if n > 0 {
+                write!(f, ", ")?;
+            }
+
+            write!(f, "adaptive")?;
+        }
+
         write!(f, "]")
     }
 }
@@ -306,6 +316,7 @@ pub enum AncState {
     Off = 1,
     Active = 2,
     Aware = 3,
+    Adaptive = 4,
 
     #[num_enum(catch_all)]
     Unknown(i32),
@@ -317,6 +328,7 @@ impl AncState {
             AncState::Off => "off",
             AncState::Active => "active",
             AncState::Aware => "aware",
+            AncState::Adaptive => "adaptive",
             AncState::Unknown(_) => "unknown",
         }
     }
@@ -336,6 +348,7 @@ impl std::fmt::Display for AncState {
             AncState::Off => write!(f, "off"),
             AncState::Active => write!(f, "active"),
             AncState::Aware => write!(f, "aware"),
+            AncState::Adaptive => write!(f, "adaptive"),
             AncState::Unknown(x) => write!(f, "unknown ({x})"),
         }
     }
