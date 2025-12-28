@@ -1,0 +1,12 @@
+[package]
+name = "tui"
+version = "0.1.0"
+edition = "2024"
+license = "MIT/Apache-2.0"
+
+[dependencies]
+ratatui = "0.29.0"
+crossterm = "0.28.1"
+tokio = { version = "1.44.2", features = ["full"] }
+anyhow = "1.0.98"
+regex = "1.10.4"
