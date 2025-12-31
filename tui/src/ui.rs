@@ -117,6 +117,10 @@ fn draw_status(f: &mut Frame, app: &App, area: Rect) {
         Row::new(vec!["Right Placement", &app.runtime.placement_right]),
         Row::new(vec!["Local Peer", &app.runtime.peer_local]),
         Row::new(vec!["Remote Peer", &app.runtime.peer_remote]),
+        Row::new(vec!["ANC Status", get_setting_val(app, "anc")]),
+        Row::new(vec!["Multipoint", get_setting_val(app, "multipoint")]),
+        Row::new(vec!["In-Ear Detection", get_setting_val(app, "ohd")]),
+        Row::new(vec!["Hold Gestures", &app.gesture_control]),
     ];
     let place_table = Table::new(place_rows, [
         Constraint::Percentage(40),
@@ -168,6 +172,10 @@ fn draw_status(f: &mut Frame, app: &App, area: Rect) {
     draw_battery_item(f, bat_chunks[current_chunk_idx], "Right Bud", app.battery.right_level, &app.battery.right_status);
 }
 
+fn get_setting_val<'a>(app: &'a App, key: &str) -> &'a str {
+    app.settings.iter().find(|s| s.key == key).map(|s| s.value.as_str()).unwrap_or("Unknown")
+}
+
 fn draw_battery_item(f: &mut Frame, area: Rect, name: &str, level: Option<u8>, status: &str) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -200,7 +208,7 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect) {
         let val_str = i.value.clone();
         
         let content = Line::from(vec![
-            Span::styled(format!("{:<20}", i.name), Style::default().fg(Color::White)),
+            Span::styled(format!("{:<40}", i.name), Style::default().fg(Color::White)),
             Span::styled(val_str, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
         ]);
         
@@ -215,10 +223,17 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_stateful_widget(list, area, &mut app.settings_state);
 }
 
-fn draw_help(f: &mut Frame, _app: &App, area: Rect) {
-    let text = "q: Quit | Tab: Switch Tab | c: Check Connection/Refresh | Enter: Toggle/Change Setting";
-    let p = Paragraph::new(text)
-        .style(Style::default().fg(Color::Gray))
-        .alignment(Alignment::Center);
-    f.render_widget(p, area);
+fn draw_help(f: &mut Frame, app: &App, area: Rect) {
+    if let Some(err) = &app.last_error {
+        let p = Paragraph::new(format!("Error: {}", err))
+            .style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
+            .alignment(Alignment::Center);
+        f.render_widget(p, area);
+    } else {
+        let text = "q: Quit | Tab: Switch Tab | c: Check Connection/Refresh | Enter: Toggle/Change Setting";
+        let p = Paragraph::new(text)
+            .style(Style::default().fg(Color::Gray))
+            .alignment(Alignment::Center);
+        f.render_widget(p, area);
+    }
 }

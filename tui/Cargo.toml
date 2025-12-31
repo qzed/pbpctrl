@@ -1,8 +1,10 @@
 [package]
 name = "pbpctui"
+authors = ["Cikki <jasoncheng@hifuu.ink>"]
 version = "0.1.0"
 edition = "2024"
 license = "MIT/Apache-2.0"
+description = "TUI utility for pbpctrl"
 
 [dependencies]
 ratatui = "0.29.0"
