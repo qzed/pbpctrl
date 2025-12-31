@@ -44,7 +44,7 @@ impl App {
                     key: "anc".to_string(), 
                     name: "ANC Mode".to_string(), 
                     value: "Pending...".to_string(),
-                    options: vec!["off".to_string(), "active".to_string(), "aware".to_string()],
+                    options: vec!["off".to_string(), "active".to_string(), "adaptive".to_string(), "aware".to_string()],
                 },
                 SettingItem { 
                     key: "volume-eq".to_string(), 
