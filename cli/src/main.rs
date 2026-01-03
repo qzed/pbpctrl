@@ -138,8 +138,8 @@ async fn main() -> Result<()> {
                 let value = SettingValue::MultipointEnable(value);
                 run(client, cmd_set_setting(handle, channel, value)).await
             },
-            SetSetting::AncGestureLoop { off, active, aware } => {
-                let value = settings::AncrGestureLoop { off, active, aware };
+            SetSetting::AncGestureLoop { off, active, aware, adaptive } => {
+                let value = settings::AncrGestureLoop { off, active, aware, adaptive };
 
                 if !value.is_valid() {
                     use clap::error::ErrorKind;
@@ -167,6 +167,10 @@ async fn main() -> Result<()> {
                     },
                     AncState::Active => {
                         let value = SettingValue::CurrentAncrState(settings::AncState::Active);
+                        run(client, cmd_set_setting(handle, channel, value)).await
+                    },
+                    AncState::Adaptive => {
+                        let value = SettingValue::CurrentAncrState(settings::AncState::Adaptive);
                         run(client, cmd_set_setting(handle, channel, value)).await
                     },
                     AncState::CycleNext => {
@@ -451,6 +455,7 @@ async fn cmd_anc_cycle(handle: ClientHandle, channel: u32, forward: bool) -> Res
         (settings::AncState::Active, enabled.active),
         (settings::AncState::Off, enabled.off),
         (settings::AncState::Aware, enabled.aware),
+        (settings::AncState::Adaptive, enabled.adaptive),
     ];
 
     let index = states.iter().position(|(s, _)| *s == state).unwrap();
