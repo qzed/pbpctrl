@@ -7,9 +7,11 @@ use bluer::rfcomm::{ProfileHandle, Role, ReqError, Stream, Profile};
 
 use futures::StreamExt;
 
-
 const PIXEL_BUDS_CLASS: u32 = 0x240404;
 const PIXEL_BUDS2_CLASS: u32 = 0x244404;
+
+/// Timeout for the entire RFCOMM connection process
+const RFCOMM_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 
 
 pub async fn find_maestro_device(adapter: &Adapter) -> Result<Device> {
@@ -48,10 +50,18 @@ pub async fn connect_maestro_rfcomm(session: &Session, dev: &Device) -> Result<S
     let mut handle = session.register_profile(maestro_profile).await?;
 
     tracing::debug!("connecting to maestro profile");
-    let stream = tokio::try_join!(
-        try_connect_profile(dev),
-        handle_requests_for_profile(&mut handle, dev.address()),
-    )?.1;
+
+    // Add timeout to prevent hanging when device disconnects during connection
+    let connect_future = async {
+        tokio::try_join!(
+            try_connect_profile(dev),
+            handle_requests_for_profile(&mut handle, dev.address()),
+        )
+    };
+
+    let stream = tokio::time::timeout(RFCOMM_CONNECT_TIMEOUT, connect_future)
+        .await
+        .map_err(|_| anyhow::anyhow!("RFCOMM connection timed out"))??.1;
 
     Ok(stream)
 }

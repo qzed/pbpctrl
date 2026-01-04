@@ -12,6 +12,9 @@ use maestro::protocol::types::RuntimeInfo as MRuntimeInfo;
 
 use crate::bt;
 
+/// Timeout for individual service commands
+const COMMAND_TIMEOUT: Duration = Duration::from_secs(3);
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConnectionState {
     Disconnected,
@@ -239,8 +242,13 @@ async fn handle_command(cmd: ClientCommand, service: &mut MaestroService, tx: &m
             let _ = tx.send(ClientEvent::ConnectionState(ConnectionState::Connected));
         }
         ClientCommand::GetSoftware => {
-            match service.get_software_info().await {
-                Ok(info) => {
+            let result = tokio::time::timeout(
+                COMMAND_TIMEOUT,
+                service.get_software_info()
+            ).await;
+
+            match result {
+                Ok(Ok(info)) => {
                     let sw = SoftwareInfo {
                         case_version: info.firmware.as_ref().and_then(|f| f.case.as_ref()).map(|v| v.version_string.clone()).unwrap_or_default(),
                         left_version: info.firmware.as_ref().and_then(|f| f.left.as_ref()).map(|v| v.version_string.clone()).unwrap_or_default(),
@@ -248,12 +256,18 @@ async fn handle_command(cmd: ClientCommand, service: &mut MaestroService, tx: &m
                     };
                     let _ = tx.send(ClientEvent::Software(sw));
                 }
-                Err(e) => { let _ = tx.send(ClientEvent::Error(format!("GetSoftware failed: {}", e))); }
+                Ok(Err(e)) => { let _ = tx.send(ClientEvent::Error(format!("GetSoftware failed: {}", e))); }
+                Err(_) => { let _ = tx.send(ClientEvent::Error("GetSoftware timed out".to_string())); }
             }
         }
         ClientCommand::GetHardware => {
-             match service.get_hardware_info().await {
-                Ok(info) => {
+            let result = tokio::time::timeout(
+                COMMAND_TIMEOUT,
+                service.get_hardware_info()
+            ).await;
+
+            match result {
+                Ok(Ok(info)) => {
                     let hw = HardwareInfo {
                         case_serial: info.serial_number.as_ref().map(|s| s.case.clone()).unwrap_or_default(),
                         left_serial: info.serial_number.as_ref().map(|s| s.left.clone()).unwrap_or_default(),
@@ -261,7 +275,8 @@ async fn handle_command(cmd: ClientCommand, service: &mut MaestroService, tx: &m
                     };
                     let _ = tx.send(ClientEvent::Hardware(hw));
                 }
-                Err(e) => { let _ = tx.send(ClientEvent::Error(format!("GetHardware failed: {}", e))); }
+                Ok(Err(e)) => { let _ = tx.send(ClientEvent::Error(format!("GetHardware failed: {}", e))); }
+                Err(_) => { let _ = tx.send(ClientEvent::Error("GetHardware timed out".to_string())); }
             }
         }
         ClientCommand::GetSetting(key) => {
@@ -287,59 +302,76 @@ async fn handle_command(cmd: ClientCommand, service: &mut MaestroService, tx: &m
             }
         }
         ClientCommand::SetSetting(key, val) => {
-            let res = match key.as_str() {
-                "anc" => {
-                    let state = match val.as_str() {
-                        "active" => settings::AncState::Active,
-                        "aware" => settings::AncState::Aware,
-                        "off" => settings::AncState::Off,
-                        "adaptive" => settings::AncState::Adaptive, 
-                        _ => settings::AncState::Off, 
-                    };
-                    service.write_setting(SettingValue::CurrentAncrState(state)).await
-                },
-                "volume-eq" => service.write_setting(SettingValue::VolumeEqEnable(val == "true")).await,
-                "mono" => service.write_setting(SettingValue::SumToMono(val == "true")).await,
-                "speech-detection" => service.write_setting(SettingValue::SpeechDetection(val == "true")).await,
-                "multipoint" => service.write_setting(SettingValue::MultipointEnable(val == "true")).await,
-                "ohd" => service.write_setting(SettingValue::OhdEnable(val == "true")).await,
-                "gestures" => service.write_setting(SettingValue::GestureEnable(val == "true")).await,
-                "volume-exposure-notifications" => service.write_setting(SettingValue::VolumeExposureNotifications(val == "true")).await,
-                "diagnostics" => service.write_setting(SettingValue::DiagnosticsEnable(val == "true")).await,
-                "oobe-mode" => service.write_setting(SettingValue::OobeMode(val == "true")).await,
-                "oobe-is-finished" => service.write_setting(SettingValue::OobeIsFinished(val == "true")).await,
-                "balance" => {
-                    if let Ok(n) = val.parse::<i32>() {
-                         let va = settings::VolumeAsymmetry::from_normalized(n);
-                         service.write_setting(SettingValue::VolumeAsymmetry(va)).await
-                    } else {
-                        Ok(())
-                    }
-                },
-                "eq" => {
-                    let parts: Vec<f32> = val.split_whitespace().filter_map(|s| s.parse().ok()).collect();
-                    if parts.len() == 5 {
-                        let eq = settings::EqBands::new(parts[0], parts[1], parts[2], parts[3], parts[4]);
-                        service.write_setting(SettingValue::CurrentUserEq(eq)).await
-                    } else {
-                        Ok(())
-                    }
-                },
-                _ => Ok(()),
+            let write_result = async {
+                match key.as_str() {
+                    "anc" => {
+                        let state = match val.as_str() {
+                            "active" => settings::AncState::Active,
+                            "aware" => settings::AncState::Aware,
+                            "off" => settings::AncState::Off,
+                            "adaptive" => settings::AncState::Adaptive,
+                            _ => settings::AncState::Off,
+                        };
+                        service.write_setting(SettingValue::CurrentAncrState(state)).await
+                    },
+                    "volume-eq" => service.write_setting(SettingValue::VolumeEqEnable(val == "true")).await,
+                    "mono" => service.write_setting(SettingValue::SumToMono(val == "true")).await,
+                    "speech-detection" => service.write_setting(SettingValue::SpeechDetection(val == "true")).await,
+                    "multipoint" => service.write_setting(SettingValue::MultipointEnable(val == "true")).await,
+                    "ohd" => service.write_setting(SettingValue::OhdEnable(val == "true")).await,
+                    "gestures" => service.write_setting(SettingValue::GestureEnable(val == "true")).await,
+                    "volume-exposure-notifications" => service.write_setting(SettingValue::VolumeExposureNotifications(val == "true")).await,
+                    "diagnostics" => service.write_setting(SettingValue::DiagnosticsEnable(val == "true")).await,
+                    "oobe-mode" => service.write_setting(SettingValue::OobeMode(val == "true")).await,
+                    "oobe-is-finished" => service.write_setting(SettingValue::OobeIsFinished(val == "true")).await,
+                    "balance" => {
+                        if let Ok(n) = val.parse::<i32>() {
+                             let va = settings::VolumeAsymmetry::from_normalized(n);
+                             service.write_setting(SettingValue::VolumeAsymmetry(va)).await
+                        } else {
+                            Ok(())
+                        }
+                    },
+                    "eq" => {
+                        let parts: Vec<f32> = val.split_whitespace().filter_map(|s| s.parse().ok()).collect();
+                        if parts.len() == 5 {
+                            let eq = settings::EqBands::new(parts[0], parts[1], parts[2], parts[3], parts[4]);
+                            service.write_setting(SettingValue::CurrentUserEq(eq)).await
+                        } else {
+                            Ok(())
+                        }
+                    },
+                    _ => Ok(()),
+                }
             };
-            
-             if let Err(e) = res {
-                let _ = tx.send(ClientEvent::Error(format!("Set {} failed: {}", key, e)));
-            } 
+
+            match tokio::time::timeout(COMMAND_TIMEOUT, write_result).await {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => { let _ = tx.send(ClientEvent::Error(format!("Set {} failed: {}", key, e))); }
+                Err(_) => { let _ = tx.send(ClientEvent::Error(format!("Set {} timed out", key))); }
+            }
         }
     }
 }
 
 async fn read_and_send<T>(service: &mut MaestroService, setting: T, key: &str, tx: &mpsc::UnboundedSender<ClientEvent>) -> Result<(), maestro::pwrpc::Error>
 where T: Setting, T::Type: std::fmt::Display {
-    let val = service.read_setting(setting).await?;
-    let _ = tx.send(ClientEvent::Setting(key.to_string(), val.to_string()));
-    Ok(())
+    let result = tokio::time::timeout(
+        COMMAND_TIMEOUT,
+        service.read_setting(setting)
+    ).await;
+
+    match result {
+        Ok(Ok(val)) => {
+            let _ = tx.send(ClientEvent::Setting(key.to_string(), val.to_string()));
+            Ok(())
+        }
+        Ok(Err(e)) => Err(e),
+        Err(_) => {
+            let _ = tx.send(ClientEvent::Error(format!("Get {} timed out", key)));
+            Ok(())
+        }
+    }
 }
 
 fn process_setting_change(setting: SettingValue, tx: &mpsc::UnboundedSender<ClientEvent>) {

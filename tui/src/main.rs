@@ -7,7 +7,6 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc;
-use futures::StreamExt;
 
 mod app;
 mod bt;
@@ -17,7 +16,7 @@ mod ui;
 use app::App;
 use maestro_client::{ClientCommand, ClientEvent};
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
@@ -35,16 +34,16 @@ async fn main() -> Result<()> {
     let mut app = App::new();
 
     // Create channels
-    let (tx_event, mut rx_event) = mpsc::unbounded_channel();
+    let (tx_event, rx_event) = mpsc::unbounded_channel();
     let (tx_cmd, rx_cmd) = mpsc::unbounded_channel();
 
-    // Spawn client
+    // Spawn client in a separate blocking task to isolate it completely
     tokio::spawn(maestro_client::run_loop(tx_event, rx_cmd));
 
     // Initial check
     tx_cmd.send(ClientCommand::CheckConnection).ok();
 
-    let res = run_app(&mut terminal, &mut app, tx_cmd, &mut rx_event).await;
+    let res = run_app(&mut terminal, &mut app, tx_cmd, rx_event).await;
 
     // Restore terminal
     disable_raw_mode()?;
@@ -66,127 +65,125 @@ async fn run_app<B: ratatui::backend::Backend>(
     terminal: &mut Terminal<B>,
     app: &mut App,
     tx_cmd: mpsc::UnboundedSender<ClientCommand>,
-    rx_event: &mut mpsc::UnboundedReceiver<ClientEvent>,
+    mut rx_event: mpsc::UnboundedReceiver<ClientEvent>,
 ) -> Result<()> {
-    let tick_rate = Duration::from_millis(250);
-    let mut last_tick = std::time::Instant::now();
-    let mut crossterm_events = event::EventStream::new().fuse();
+    let tick_rate = Duration::from_millis(50);
 
     loop {
         terminal.draw(|f| ui::draw(f, app))?;
 
-        tokio::select! {
-            Some(Ok(Event::Key(key))) = crossterm_events.next() => {
-                match key.code {
-                    KeyCode::Char('q') => {
-                        app.should_quit = true;
-                    }
-                    KeyCode::Tab => {
-                        app.next_tab();
-                    }
-                    KeyCode::Char('c') => {
-                        tx_cmd.send(ClientCommand::CheckConnection)?;
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => {
-                         if app.selected_tab == 1 {
-                             app.next_setting();
-                         }
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        if app.selected_tab == 1 {
-                            app.previous_setting();
-                        }
-                    }
-                    KeyCode::Left => {
-                        if app.selected_tab == 1 {
-                            handle_numeric_change(app, &tx_cmd, -1.0);
-                        }
-                    }
-                    KeyCode::Right => {
-                        if app.selected_tab == 1 {
-                            handle_numeric_change(app, &tx_cmd, 1.0);
-                        }
-                    }
-                    KeyCode::Enter => {
-                        if app.selected_tab == 1 {
-                            handle_setting_change(app, &tx_cmd);
-                        }
-                    }
-                    _ => {}
+        // Poll for keyboard events with timeout - this is non-blocking
+        if event::poll(tick_rate)? && let Event::Key(key) = event::read()? {
+            match key.code {
+                KeyCode::Char('q') => {
+                    app.should_quit = true;
                 }
-            }
-            
-            Some(event) = rx_event.recv() => {
-                match event {
-                    ClientEvent::ConnectionState(state) => {
-                        app.connection_state = state.clone();
-                        if matches!(state, maestro_client::ConnectionState::Connected) {
-                            // Refresh all
-                            tx_cmd.send(ClientCommand::GetSoftware)?;
-                            tx_cmd.send(ClientCommand::GetHardware)?;
-                            
-                            // Fetch settings
-                            let mut fetched_keys = std::collections::HashSet::new();
-                            for item in &app.settings {
-                                 if !fetched_keys.contains(&item.key) {
-                                     tx_cmd.send(ClientCommand::GetSetting(item.key.clone()))?;
-                                     fetched_keys.insert(item.key.clone());
-                                 }
-                            }
-                            tx_cmd.send(ClientCommand::GetSetting("gesture-control".to_string()))?;
-                        }
-                    }
-                    ClientEvent::Software(info) => {
-                        app.software = info;
-                    }
-                    ClientEvent::Hardware(info) => {
-                        app.hardware = info;
-                    }
-                    ClientEvent::Runtime(info) => {
-                        app.runtime = info.clone();
-                        app.battery = info.battery;
-                    }
-                    ClientEvent::Setting(key, val) => {
-                        if key == "gesture-control" {
-                            app.gesture_control = val;
-                        } else if key == "eq" {
-                            // val format from libmaestro is "EqBands { ... }"
-                            // Let's parse it differently. It's now stringified struct.
-                            // `eq.to_string()` produces `[f, f, f, f, f]`
-                            let trimmed = val.trim_matches(|c| c == '[' || c == ']');
-                            let parts: Vec<&str> = trimmed.split(',').map(|s| s.trim()).collect();
-                            
-                            if parts.len() == 5 {
-                                 for (i, part) in parts.iter().enumerate() {
-                                     if part.parse::<f32>().is_ok()
-                                         && let Some(item) = app.settings.iter_mut().find(|it| it.key == "eq" && it.index == Some(i)) {
-                                             item.value = part.to_string();
-                                     }
-                                 }
-                            }
-                        } else if key == "balance" {
-                            // val from libmaestro is "left: X%, right: Y%"
-                            app.update_setting(key, val);
-                        } else {
-                            app.update_setting(key, val);
-                        }
-                    }
-                    ClientEvent::Error(msg) => {
-                        app.set_error(msg);
+                KeyCode::Tab => {
+                    app.next_tab();
+                }
+                KeyCode::Char('c') => {
+                    tx_cmd.send(ClientCommand::CheckConnection).ok();
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    if app.selected_tab == 1 {
+                        app.next_setting();
                     }
                 }
+                KeyCode::Up | KeyCode::Char('k') => {
+                    if app.selected_tab == 1 {
+                        app.previous_setting();
+                    }
+                }
+                KeyCode::Left => {
+                    if app.selected_tab == 1 {
+                        handle_numeric_change(app, &tx_cmd, -1.0);
+                    }
+                }
+                KeyCode::Right => {
+                    if app.selected_tab == 1 {
+                        handle_numeric_change(app, &tx_cmd, 1.0);
+                    }
+                }
+                KeyCode::Enter => {
+                    if app.selected_tab == 1 {
+                        handle_setting_change(app, &tx_cmd);
+                    }
+                }
+                _ => {}
             }
         }
 
-        if last_tick.elapsed() >= tick_rate {
-            app.on_tick();
-            last_tick = std::time::Instant::now();
+        // Process all pending client events (non-blocking)
+        while let Ok(event) = rx_event.try_recv() {
+            process_client_event(app, &tx_cmd, event)?;
         }
+
+        app.on_tick();
 
         if app.should_quit {
             return Ok(());
         }
     }
+}
+
+fn process_client_event(
+    app: &mut App,
+    tx_cmd: &mpsc::UnboundedSender<ClientCommand>,
+    event: ClientEvent,
+) -> Result<()> {
+    match event {
+        ClientEvent::ConnectionState(state) => {
+            app.connection_state = state.clone();
+            if matches!(state, maestro_client::ConnectionState::Connected) {
+                tx_cmd.send(ClientCommand::GetSoftware)?;
+                tx_cmd.send(ClientCommand::GetHardware)?;
+
+                let mut fetched_keys = std::collections::HashSet::new();
+                for item in &app.settings {
+                    if !fetched_keys.contains(&item.key) {
+                        tx_cmd.send(ClientCommand::GetSetting(item.key.clone()))?;
+                        fetched_keys.insert(item.key.clone());
+                    }
+                }
+                tx_cmd.send(ClientCommand::GetSetting("gesture-control".to_string()))?;
+            }
+        }
+        ClientEvent::Software(info) => {
+            app.software = info;
+        }
+        ClientEvent::Hardware(info) => {
+            app.hardware = info;
+        }
+        ClientEvent::Runtime(info) => {
+            app.runtime = info.clone();
+            app.battery = info.battery;
+        }
+        ClientEvent::Setting(key, val) => {
+            if key == "gesture-control" {
+                app.gesture_control = val;
+            } else if key == "eq" {
+                let trimmed = val.trim_matches(|c| c == '[' || c == ']');
+                let parts: Vec<&str> = trimmed.split(',').map(|s| s.trim()).collect();
+
+                if parts.len() == 5 {
+                    for (i, part) in parts.iter().enumerate() {
+                        if part.parse::<f32>().is_ok()
+                            && let Some(item) = app.settings.iter_mut()
+                                .find(|it| it.key == "eq" && it.index == Some(i))
+                        {
+                            item.value = part.to_string();
+                        }
+                    }
+                }
+            } else {
+                app.update_setting(key, val);
+            }
+        }
+        ClientEvent::Error(msg) => {
+            app.set_error(msg);
+        }
+    }
+    Ok(())
 }
 
 fn handle_numeric_change(app: &mut App, tx_cmd: &mpsc::UnboundedSender<ClientCommand>, direction: f32) {
