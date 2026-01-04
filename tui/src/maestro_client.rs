@@ -108,7 +108,11 @@ pub async fn run_loop(
         let stream = match bt::connect_maestro_rfcomm(&session, &dev).await {
             Ok(s) => s,
             Err(e) => {
-                let _ = tx.send(ClientEvent::Error(format!("Connection failed: {}", e)));
+                // Only send error if it's not a transient connection failure
+                let err_str = e.to_string();
+                if !err_str.contains("not available") && !err_str.contains("not connected") {
+                    let _ = tx.send(ClientEvent::Error(format!("Connection failed: {}", e)));
+                }
                 tokio::time::sleep(Duration::from_secs(2)).await;
                 continue;
             }
@@ -164,22 +168,32 @@ pub async fn run_loop(
             tokio::select! {
                 res = &mut client_task => {
                     // Client task finished (error or disconnect)
+                    // Clear subscriptions immediately to prevent blocking
+                    settings_sub = None;
+                    runtime_sub = None;
+
                     let _ = tx.send(ClientEvent::ConnectionState(ConnectionState::Disconnected));
                     match res {
-                        Ok(Err(e)) => { let _ = tx.send(ClientEvent::Error(format!("Client error: {}", e))); }
+                        Ok(Err(e)) => {
+                            // Only send error if it's not a connection reset (expected on disconnect)
+                            let err_str = e.to_string();
+                            if !err_str.contains("connection reset") && !err_str.contains("os error 104") {
+                                let _ = tx.send(ClientEvent::Error(format!("Client error: {}", e)));
+                            }
+                        }
                         Ok(Ok(_)) => {} // Clean exit?
                         Err(e) => { let _ = tx.send(ClientEvent::Error(format!("Client task join error: {}", e))); }
                     }
-                    break; 
+                    break;
                 }
-                
+
                 cmd = rx.recv() => {
                     match cmd {
                         Some(c) => handle_command(c, &mut service, &tx).await,
-                        None => return, 
+                        None => return,
                     }
                 }
-                
+
                 Some(res) = async { settings_sub.as_mut()?.stream().next().await }, if settings_sub.is_some() => {
                     match res {
                         Ok(rsp) => {
@@ -193,17 +207,23 @@ pub async fn run_loop(
                                  }
                              }
                         }
-                        Err(_) => break, 
+                        Err(_) => {
+                            // Settings subscription error, clear it to prevent blocking
+                            settings_sub = None;
+                        }
                     }
                 }
-                
+
                 Some(res) = async { runtime_sub.as_mut()?.stream().next().await }, if runtime_sub.is_some() => {
                     match res {
                         Ok(info) => {
                             let r_info = convert_runtime_info(info, channel);
                             let _ = tx.send(ClientEvent::Runtime(r_info));
                         }
-                        Err(_) => break,
+                        Err(_) => {
+                            // Runtime subscription error, clear it to prevent blocking
+                            runtime_sub = None;
+                        }
                     }
                 }
             }

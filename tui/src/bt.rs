@@ -65,7 +65,7 @@ async fn try_connect_profile(dev: &Device) -> Result<()> {
         if i >= MAX_TRIES { return Err(err.into()) }
         i += 1;
 
-        tracing::warn!(error=?err, "connecting to profile failed, trying again ({}/{})", i, MAX_TRIES);
+        tracing::debug!(error=?err, "connecting to profile failed, trying again ({}/{})", i, MAX_TRIES);
 
         tokio::time::sleep(RETRY_TIMEOUT).await;
     }
