@@ -1,5 +1,5 @@
 use ratatui::widgets::ListState;
-use crate::cli_client::{ConnectionState, BatteryState, SoftwareInfo, HardwareInfo, RuntimeInfo};
+use crate::maestro_client::{ConnectionState, BatteryState, SoftwareInfo, HardwareInfo, RuntimeInfo};
 
 #[derive(Debug, Clone)]
 pub struct SettingItem {
@@ -193,11 +193,9 @@ impl App {
 
     pub fn on_tick(&mut self) {
         // Clear error after 5 seconds
-        if let Some(time) = self.last_error_time {
-            if time.elapsed() > std::time::Duration::from_secs(5) {
-                self.last_error = None;
-                self.last_error_time = None;
-            }
+        if self.last_error_time.is_some_and(|time| time.elapsed() > std::time::Duration::from_secs(5)) {
+            self.last_error = None;
+            self.last_error_time = None;
         }
     }
 

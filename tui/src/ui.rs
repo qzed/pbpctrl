@@ -6,7 +6,7 @@ use ratatui::{
     Frame,
 };
 use crate::app::App;
-use crate::cli_client::ConnectionState;
+use crate::maestro_client::ConnectionState;
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()

@@ -862,8 +862,8 @@ where
 
 #[derive(Debug, Clone)]
 pub struct UnaryRpc<M1, M2> {
-    marker1: std::marker::PhantomData<*const M1>,
-    marker2: std::marker::PhantomData<*const M2>,
+    marker1: std::marker::PhantomData<M1>,
+    marker2: std::marker::PhantomData<M2>,
     path: Path,
 }
 
@@ -912,8 +912,8 @@ where
 
 #[derive(Debug, Clone)]
 pub struct ServerStreamRpc<M1, M2> {
-    marker1: std::marker::PhantomData<*const M1>,
-    marker2: std::marker::PhantomData<*const M2>,
+    marker1: std::marker::PhantomData<M1>,
+    marker2: std::marker::PhantomData<M2>,
     path: Path,
 }
 
