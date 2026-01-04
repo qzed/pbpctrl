@@ -66,7 +66,10 @@ async fn run_app<B: ratatui::backend::Backend>(
     app: &mut App,
     tx_cmd: mpsc::UnboundedSender<ClientCommand>,
     mut rx_event: mpsc::UnboundedReceiver<ClientEvent>,
-) -> Result<()> {
+) -> Result<()>
+where
+    <B as ratatui::backend::Backend>::Error: std::marker::Send + Sync + 'static,
+{
     let tick_rate = Duration::from_millis(50);
 
     loop {
