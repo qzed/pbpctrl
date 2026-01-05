@@ -1,4 +1,4 @@
-use std::{io, time::Duration};
+use std::{fs::File, io, sync::Mutex, time::Duration};
 use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
@@ -18,9 +18,11 @@ use maestro_client::{ClientCommand, ClientEvent};
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> Result<()> {
+    let log_file = File::create("pbpctui.log")?;
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
-        .with_writer(std::io::stderr)
+        .with_writer(Mutex::new(log_file))
+        .with_ansi(false)
         .init();
 
     // Setup terminal
