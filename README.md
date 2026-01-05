@@ -32,7 +32,7 @@ Use the `--tag` option if you want to install a specific tag instead of the late
 
 ## TUI Extension
 
-A TUI wrapper `pbpctui` is provided in the `tui` directory. It uses `ratatui` to provide a visual interface for monitoring status and changing settings.
+A TUI program `pbpctui` is provided in the `tui` directory. It uses `ratatui` to provide a visual interface for monitoring status and changing settings.
 
 ### Installation
 
@@ -44,7 +44,6 @@ cargo install pbpctui --git https://github.com/qzed/pbpctrl/
 
 ### Usage
 
-Ensure `pbpctrl` is installed and available in your PATH (or in the current directory).
 Run:
 ```sh
 pbpctui
