@@ -18,7 +18,7 @@ use maestro_client::{ClientCommand, ClientEvent};
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> Result<()> {
-    let log_file = File::create("pbpctui.log")?;
+    let log_file = File::create("/tmp/pbpctui.log")?;
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .with_writer(Mutex::new(log_file))
