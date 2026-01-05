@@ -12,14 +12,14 @@ arrayvec = "0.7.6"
 bytes = "1.10.1"
 futures = "0.3.31"
 num_enum = "0.7.3"
-prost = "0.13.5"
+prost = "0.14.1"
 tokio = { version = "1.44.2", features = ["macros"] }
 tokio-util = { version = "0.7.14", features = ["codec"] }
 tracing = "0.1.41"
 uuid = "1.16.0"
 
 [build-dependencies]
-prost-build = "0.13.5"
+prost-build = "0.14.1"
 
 [dev-dependencies]
 anyhow = "1.0.98"

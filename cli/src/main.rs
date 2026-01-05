@@ -455,6 +455,7 @@ async fn cmd_anc_cycle(handle: ClientHandle, channel: u32, forward: bool) -> Res
         (settings::AncState::Active, enabled.active),
         (settings::AncState::Off, enabled.off),
         (settings::AncState::Aware, enabled.aware),
+        (settings::AncState::Adaptive, enabled.adaptive),
     ];
 
     let index = states.iter().position(|(s, _)| *s == state).unwrap();

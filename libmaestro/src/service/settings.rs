@@ -297,7 +297,6 @@ impl std::fmt::Display for AncrGestureLoop {
             write!(f, "aware")?;
         }
 
-
         if self.adaptive {
             if n > 0 {
                 write!(f, ", ")?;

@@ -1,6 +1,6 @@
 //! Simple example for changing settings on the Pixel Buds Pro via the Maestro service.
 //!
-//! Sets active nois ecancelling (ANC) state. 1: off, 2: active, 3: aware, 4.adaptive
+//! Sets active noise cancelling (ANC) state. 1: off, 2: active, 3: aware, 4: adaptive.
 //!
 //! Usage:
 //!   cargo run --example maestro_write_settings -- <bluetooth-device-address> <anc-state>
