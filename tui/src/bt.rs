@@ -23,6 +23,10 @@ pub async fn find_maestro_device(adapter: &Adapter) -> Result<Device> {
             continue;
         }
 
+        if !dev.is_connected().await.unwrap_or(false) {
+            continue;
+        }
+
         let uuids = dev.uuids().await?.unwrap_or_default();
         if !uuids.contains(&maestro::UUID) {
             continue;
