@@ -30,6 +30,32 @@ cargo install pbpctrl --git https://github.com/qzed/pbpctrl/
 Use the `--tag` option if you want to install a specific tag instead of the latest `main` branch.
 
 
+## TUI Extension
+
+A TUI program `pbpctui` is provided in the `tui` directory. It uses `ratatui` to provide a visual interface for monitoring status and changing settings.
+
+### Installation
+
+To install the TUI from the source:
+
+```sh
+cargo install pbpctui --git https://github.com/qzed/pbpctrl/
+```
+
+### Usage
+
+Run:
+```sh
+pbpctui
+```
+Navigation:
+- **Tab**: Switch between Status and Settings tabs.
+- **Arrow Keys or j/k**: Navigate settings.
+- **Enter**: Toggle/Cycle options.
+- **Left/Right**: Adjust slider values (Balance, EQ).
+- **q**: Quit.
+
+
 ## Instructions
 
 Pair and connect your Pixel Buds Pro before use.

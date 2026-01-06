@@ -23,7 +23,7 @@ prost-build = "0.14.1"
 
 [dev-dependencies]
 anyhow = "1.0.98"
-bluer = { version = "0.17.3", features = ["bluetoothd", "rfcomm"] }
+bluer = { version = "0.17.4", features = ["bluetoothd", "rfcomm"] }
 futures = "0.3.31"
 pretty-hex = "0.4.1"
 tokio = { version = "1.44.2", features = ["rt", "macros", "signal"] }
