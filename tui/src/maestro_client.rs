@@ -172,8 +172,8 @@ pub async fn run_loop(
                 res = &mut client_task => {
                     // Client task finished (error or disconnect)
                     // Clear subscriptions immediately to prevent blocking
-                    settings_sub = None;
-                    runtime_sub = None;
+                    drop(settings_sub);
+                    drop(runtime_sub);
 
                     let _ = tx.send(ClientEvent::ConnectionState(ConnectionState::Disconnected));
                     match res {
